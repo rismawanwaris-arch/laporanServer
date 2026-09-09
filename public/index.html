@@ -237,7 +237,7 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
       <button class="navbtn" data-view="pengaturan">Pengaturan</button>
     </nav>
     <span class="hspace"></span>
-    <label class="hdate" title="Tanggal data yang sedang dikerjakan">📅 <input type="date" id="tglData"></label>
+    <label class="hdate" title="Tanggal data. Ganti untuk membuka data tersimpan tanggal itu, atau menyimpan hasil ini sebagai tanggal itu.">📅 <input type="date" id="tglData"></label>
     <button class="hbtn icon" id="themeBtn" title="Ganti tema terang / gelap" aria-label="Ganti tema">◐</button>
   </div>
 </header>
@@ -1795,7 +1795,20 @@ addEventListener('resize', syncStickyOffset);
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(syncStickyOffset);
 
 $('#tglData').value = localDate(new Date());
-$('#tglData').addEventListener('change', () => { $('#tglData').dataset.touched = '1'; });
+$('#tglData').addEventListener('change', async () => {
+  const d = $('#tglData').value;
+  $('#tglData').dataset.touched = '1';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+  if(!bisaSimpan()){ toast('Hasil akan disimpan sebagai tanggal ' + tglS(new Date(d + 'T00:00:00'))); return; }
+  try{
+    const hit = (await SRV.list()).filter(r => r.tanggal === d);
+    if(hit.length){
+      if(confirm('Ada data tersimpan untuk ' + tglS(new Date(d + 'T00:00:00')) + '. Buka data itu?')) loadSnapshot(hit[0].id);
+    } else {
+      toast('Belum ada data tersimpan ' + tglS(new Date(d + 'T00:00:00')) + ' — hasil sekarang akan disimpan sebagai tanggal ini');
+    }
+  }catch(e){}
+});
 
 (function boot(){
   updateImportButtons();
