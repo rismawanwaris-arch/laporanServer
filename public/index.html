@@ -1732,12 +1732,21 @@ function updateImportButtons(){
 
 /* ---------- alur baru: simpan ke DB dulu, analisa menyusul dari record ----------
    Tanpa server (artifact / file lokal) tetap: tombol = analisa langsung dari kotak. */
+const TA = { oto:'#taOto', bri:'#taBri', bca:'#taBca', mdr:'#taMdr', qris:'#taQris' };
+
 async function runImport(){
   $('#ioErr').textContent = '';
   if(!bisaSimpan()){ analyse(inputs()); return; }
 
-  const oto = parseOtomax(inputs().oto);
-  if(!oto.length){ $('#ioErr').textContent = 'Data Otomax wajib & harus terbaca (kolom dipisah TAB).'; return; }
+  const src = inputs();
+  const oto = parseOtomax(src.oto);
+  if(!oto.length){
+    // Otomax kosong tapi ada file bank/QRIS → tawarkan tambahkan ke record tanggal itu.
+    const punya = ['bri','bca','mdr','qris'].filter(k => (src[k] || '').trim());
+    if(punya.length){ return tambahKeRecord(src, punya); }
+    $('#ioErr').textContent = 'Data Otomax wajib & harus terbaca (kolom dipisah TAB).';
+    return;
+  }
   oto.forEach(r => { r.d = new Date(r.tgl); });
   const cnt = new Map();
   oto.forEach(r => { const d = tanggalUsaha(r); const k = d && !isNaN(d) ? localDate(d) : null; if(k) cnt.set(k, (cnt.get(k) || 0) + 1); });
@@ -1827,6 +1836,41 @@ function ringkasanRingan(src, fokus, tanggal){
     admin: scoped.filter(r => r.arah === 'biaya').reduce((s,r) => s + r.jumlah, 0),
     punyaBank: { bri: !!src.bri.trim(), bca: !!src.bca.trim(), mdr: !!src.mdr.trim(), qris: !!src.qris.trim() },
   };
+}
+
+// Otomax kosong, hanya file bank/QRIS → tambahkan ke record tanggal yang cocok.
+async function tambahKeRecord(src, keys){
+  let tgl = $('#tglData').dataset.touched ? $('#tglData').value : '';
+  if(!tgl && (src.qris || '').trim() && isBcaMerchant(src.qris)) tgl = bcaMerchantTanggal(src.qris) || '';
+  if(!tgl){
+    for(const k of keys){
+      if(k === 'qris') continue;
+      const p = k === 'bri' ? parseBankBRI(src[k]) : k === 'bca' ? parseBankBCA(src[k]) : parseBankMandiri(src[k]);
+      const ds = (p.rows || []).map(b => rowDateISO(b.waktu)).filter(Boolean);
+      if(ds.length){ const c = {}; ds.forEach(d => c[d] = (c[d] || 0) + 1); tgl = Object.keys(c).sort((a,b) => c[b] - c[a])[0]; break; }
+    }
+  }
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(tgl)){ $('#ioErr').textContent = 'Tak bisa menebak tanggal file ini — pilih tanggal di header dulu.'; return; }
+  const nama = tglS(new Date(tgl + 'T00:00:00'));
+  let list;
+  try{ list = await SRV.list(); }catch(e){ $('#ioErr').textContent = e.message; return; }
+  const rec = list.find(r => r.tanggal === tgl);
+  if(!rec){
+    $('#ioErr').textContent = 'Belum ada record untuk ' + nama + '. Isi juga data Otomax untuk buat record baru.';
+    return;
+  }
+  const lbl = keys.map(k => k.toUpperCase()).join(', ');
+  if(!confirm('Tambahkan file ' + lbl + ' ke record ' + nama + '?')) return;
+  try{
+    const full = await SRV.get(rec.id);
+    const merged = { ...(full.sumber || {}) };
+    keys.forEach(k => merged[k] = src[k]);
+    await SRV.patch(rec.id, { sumber: merged });
+    ['bri','bca','mdr','qris'].forEach(k => { $(TA[k]).value = ''; store(LS[k], null); });
+    $('#ioErr').textContent = '';
+    await loadSnapshot(rec.id);
+    toast('File ' + lbl + ' ditambahkan ke record ' + nama);
+  }catch(err){ if(/login/i.test(err.message)) showLogin(); else $('#ioErr').textContent = 'Gagal: ' + err.message; }
 }
 
 $('#runBtn').onclick = runImport;
