@@ -677,6 +677,7 @@ const CAT_RULES = [
   [/^TARTUN\s+EDC/i,                'Tarik Tunai — EDC (gesek kartu)',    'masuk'],
   [/^TARTUN\s+TF/i,                 'Tarik Tunai — Transfer Bank',        'masuk'],
   [/^TARTUN/i,                      'Tarik Tunai — lainnya',              'masuk'],
+  [/^(REV\s+)+/i,                   'REV lainnya (pembatalan)',           'koreksi'],
 ];
 function categorise(ket){
   const k = ket.trim();
