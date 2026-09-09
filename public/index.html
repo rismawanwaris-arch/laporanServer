@@ -348,6 +348,18 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
     </div>
 
     <div class="setgroup">
+      <h3>Konsolidasi nama outlet</h3>
+      <p class="hint">Peta <b>ID agen → nama outlet</b>. Dipakai saat mutasi bank menyebut kode (mis. “<span class="num">Tartun PLC68</span>”) tapi Otomax mencatat deposit-nya dengan nama outlet (“PLC DM”). Satu baris = <span class="num">KODE&nbsp;&lt;tab&gt;&nbsp;NAMA</span> — bisa tempel langsung dari spreadsheet.</p>
+      <textarea id="outletMapTa" spellcheck="false" style="width:100%;height:180px;resize:vertical;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.5"></textarea>
+      <p id="outletMapCount" class="hint" style="margin:6px 0 10px"></p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn-primary" id="outletMapSave">Simpan</button>
+        <button class="btn-ghost" id="outletMapReset">Kembalikan ke bawaan</button>
+        <span class="err" id="outletMapMsg"></span>
+      </div>
+    </div>
+
+    <div class="setgroup">
       <h3>Keputusan audit manual</h3>
       <p class="hint">Keputusan "Cocok" / "Bukan" yang Anda tekan di tabel <b>Audit manual</b> (tab Rekonsiliasi). Tersimpan di peramban ini.</p>
       <p id="auditCount" class="hint" style="margin:0 0 8px"></p>
@@ -413,7 +425,7 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
 "use strict";
 const $ = s => document.querySelector(s);
 const el = (t,c,txt) => { const e=document.createElement(t); if(c)e.className=c; if(txt!=null)e.textContent=txt; return e; };
-const LS = { oto:'rt-otomax', bri:'rt-bri', bca:'rt-bca', mdr:'rt-mandiri', qris:'rt-qris', theme:'rt-theme', qrisMap:'rt-qris-map', auditOk:'rt-audit' };
+const LS = { oto:'rt-otomax', bri:'rt-bri', bca:'rt-bca', mdr:'rt-mandiri', qris:'rt-qris', theme:'rt-theme', qrisMap:'rt-qris-map', auditOk:'rt-audit', outletMap:'rt-outlet-map' };
 const fmt = n => new Intl.NumberFormat('id-ID').format(Math.round(n));
 const rp  = n => (n<0?'−':'') + 'Rp' + fmt(Math.abs(n));
 const norm = s => (s||'').replace(/\s+/g,' ').trim().toUpperCase();
@@ -693,14 +705,24 @@ function reconcileBank(bankName, otoRows, src){
   // kalau tidak, baris deposit tetap dimunculkan sebagai Otomax "belum ada bukti mutasi" supaya
   // bisa disandingkan manual di tabel Audit (kredit bank ↔ deposit Otomax, per nominal).
   const depoRe = new RegExp('DEPOSIT\\b[\\s-]*' + bankName + '\\b', 'i');
+  const omap = readOutletMap();
+  const codeName = d => { const c = outletCode(d); return c && omap[c] ? norm(omap[c]) : null; };
   otoRows.forEach((r,i) => {
     if(r._depoUsed || r.jumlah <= 0 || !depoRe.test(r.ket)) return;
     r._depoUsed = true;
-    const cand = credit.filter(b => !b.matched && b.amount === r.jumlah);
+    let cand = credit.filter(b => !b.matched && b.amount === r.jumlah);
+    let viaCode = null;
+    if(cand.length > 1){
+      // nominal tak unik → saring pakai kode outlet di berita bank (mis. "Tartun PLC68" → "PLC DM")
+      const byName = cand.filter(b => codeName(b.desc) === norm(r.reseller));
+      if(byName.length === 1){ cand = byName; viaCode = outletCode(cand[0].desc); }
+    } else if(cand.length === 1){
+      viaCode = codeName(cand[0].desc) === norm(r.reseller) ? outletCode(cand[0].desc) : null;
+    }
     const base = { ...r, i, isRev:false, ref:(r.ket || '(deposit)').trim(), normRef:'', toks:[] };
     if(cand.length === 1){
       cand[0].matched = true;
-      oto.push({ ...base, status:'cocok_deposit', bwaktu:cand[0].waktu });
+      oto.push({ ...base, status:'cocok_deposit', bwaktu:cand[0].waktu, bcode:viaCode });
     } else {
       oto.push({ ...base, status:'tidak_ada', bwaktu:'' });
     }
@@ -759,6 +781,29 @@ function isBcaMerchant(text){
 const qStrip = s => norm(s).replace(/\b(PLC|KBB|CELL|CABANG|OUTLET|QR)\b/g, '').replace(/[^A-Z0-9]/g, '');
 function readQrisMap(){ try{ return JSON.parse(read(LS.qrisMap) || '{}') || {}; }catch{ return {}; } }
 function writeQrisMap(m){ store(LS.qrisMap, JSON.stringify(m)); }
+
+/* ---------- konsolidasi nama outlet: ID agen (mis. "PLC68") → nama outlet Otomax ("PLC DM") ----------
+   Mutasi BCA menyebut kode outlet ("… Tartun PLC68 …") sementara Otomax mencatat deposit-nya
+   hanya dengan nama di kolom reseller. Peta ini menyatukan keduanya saat rekonsiliasi. */
+const OUTLET_SEED = {
+  PLC101:'PLC ASBER2', PLC102:'PLC BK CIPADUNG', PLC106:'PLC BK7 NAGROG2', PLC108:'PLC CISA',
+  PLC111:'PLC BUNISARI', PLC112:'PLC ALFA1 PASIR IMPUN', PLC114:'PLC ALFA7 CINGISED', PLC115:'PLC BAKSAR1',
+  PLC116:'PLC BK5 CIGER', PLC120:'PLC CIKADUT 1', PLC121:'PLC PC3 CJM', PLC123:'PLC BK6 PANGARITAN',
+  PLC128:'PLC PD3', PLC129:'PLC BAKSAR2', PLC130:'PLC CUKANG', PLC131:'PLC CIPADUNG 2', PLC132:'PLC CL 1',
+  PLC133:'PLC CIKADUT 2', PLC134:'PLC CIPAGALO CELL', PLC135:'PLC CL 2', PLC136:'PLC CL 3', PLC137:'PLC CIPOREAT',
+  PLC138:'PLC CIHAURKUKU', PLC139:'PLC CL 4', PLC21:'PLC PC5 CIGENDING', PLC25:'PLC ALFA5 NAGROG1',
+  PLC30:'PLC ALFA6 CINANGKA', PLC31:'PLC BK CIJAMBE', PLC36:'PLC PC4 OJEG', PLC42:'PLC SS', PLC51:'PLC SA',
+  PLC52:'PLC SINOM', PLC54:'PLC PD2', PLC65:'PLC ALFA4 PARAKAN', PLC68:'PLC DM', PLC69:'PLC RK',
+  PLC70:'PLC ALFA2 SINJAY2', PLC71:'PLC ALFA3 SINJAY1', PLC80:'PLC JH2', PLC82:'PLC PD1', PLC97:'PLC ASBER1',
+  KBB001:'KBB RAWA 2', KBB002:'KBB PERMATA', KBB003:'KBB KALAPA',
+};
+function readOutletMap(){
+  try{ const s = read(LS.outletMap); if(s){ const o = JSON.parse(s); if(o && typeof o === 'object') return o; } }catch{}
+  return { ...OUTLET_SEED };
+}
+function writeOutletMap(m){ store(LS.outletMap, JSON.stringify(m)); }
+// ekstrak kode "PLC68" / "KBB001" dari berita transaksi bank
+const outletCode = s => { const m = String(s || '').toUpperCase().match(/\b(PLC|KBB)\s*0*\d+\b/); return m ? m[0].replace(/\s+/g, '') : null; };
 
 // Keputusan audit manual: { [key]: 'cocok' | 'bukan' }
 function readAudit(){ try{ return JSON.parse(read(LS.auditOk) || '{}') || {}; }catch{ return {}; } }
@@ -1250,17 +1295,24 @@ function sect(title, items, render){
 // Sandingkan sisi yang belum ketemu (kredit bank vs baris Otomax) per nominal — untuk audit manual:
 // baris yang keisi di dua sisi = kemungkinan transaksi yang sama tapi format referensinya beda.
 function auditRows(bankU, otoU){
+  const omap = readOutletMap();
+  const codeName = d => { const c = outletCode(d); return c && omap[c] ? norm(omap[c]) : null; };
   const oRem = otoU.map(o => ({ o, used:false }));
   const rows = [];
   bankU.forEach(b => {
-    let hit = oRem.find(x => !x.used && x.o.jumlah === b.amount);
-    let match = hit ? 'sama' : null;
+    const cn = codeName(b.desc);
+    // 1) nominal sama + nama outlet (dari kode di berita bank) sama → paling yakin
+    let hit = cn ? oRem.find(x => !x.used && x.o.jumlah === b.amount && norm(x.o.reseller) === cn) : null;
+    let match = hit ? 'kode' : null;
+    // 2) nominal sama persis
+    if(!hit){ hit = oRem.find(x => !x.used && x.o.jumlah === b.amount); if(hit) match = 'sama'; }
+    // 3) nominal dekat & tunggal
     if(!hit){
       const near = oRem.filter(x => !x.used && Math.abs(x.o.jumlah - b.amount) <= Math.max(1000, Math.abs(b.amount) * 0.006));
       if(near.length === 1){ hit = near[0]; match = 'dekat'; }
     }
     if(hit) hit.used = true;
-    rows.push({ amt:b.amount, bank:b, oto: hit ? hit.o : null, match });
+    rows.push({ amt:b.amount, bank:b, oto: hit ? hit.o : null, match, code:outletCode(b.desc) });
   });
   oRem.filter(x => !x.used).forEach(x => rows.push({ amt:x.o.jumlah, bank:null, oto:x.o, match:null }));
   rows.sort((a,b) => ((b.bank && b.oto) ? 1 : 0) - ((a.bank && a.oto) ? 1 : 0) || Math.abs(b.amt) - Math.abs(a.amt));
@@ -1291,9 +1343,10 @@ function auditBlock(bankName, bankU, otoU){
     const jamB = x.bank && x.bank.waktu ? (String(x.bank.waktu).match(/\d{2}:\d{2}(:\d{2})?/) || [''])[0] : '';
     const mono = 'font-size:11.5px;font-family:\'IBM Plex Mono\',monospace';
     const nom = (x.match === 'dekat' && x.oto) ? rp(x.amt) + ' / ' + rp(x.oto.jumlah) : rp(x.amt);
+    const bankTxt = x.bank ? (jamB ? jamB + '  ' : '') + x.bank.desc.slice(0,60) : '—';
     tr.append(
       Object.assign(el('td','n'), { textContent:nom }),
-      Object.assign(el('td'), { style:mono, textContent: x.bank ? (jamB ? jamB + '  ' : '') + x.bank.desc.slice(0,60) : '—' }),
+      Object.assign(el('td'), { style:mono, textContent: bankTxt }),
       Object.assign(el('td'), { style:mono, textContent: x.oto ? x.oto.reseller.trim() + '  ·  ' + x.oto.ref.slice(0,52) : '—' }),
     );
     const act = el('td');
@@ -1303,8 +1356,9 @@ function auditBlock(bankName, bankU, otoU){
       const bX = el('button','mini' + (status === 'bukan' ? ' on' : ''), 'Bukan'); bX.onclick = () => set('bukan');
       bC.style.marginRight = '4px';
       act.append(bC, bX);
+      if(x.match === 'kode') act.append(Object.assign(el('div','hint'), { style:'margin-top:3px', textContent:'kode ' + x.code + ' cocok' }));
     } else {
-      act.innerHTML = '<span class="hint">satu sisi</span>';
+      act.innerHTML = '<span class="hint">satu sisi</span>' + (x.code ? '<br><span class="hint">kode ' + x.code + '</span>' : '');
     }
     tr.append(act);
     tbody.append(tr);
@@ -1373,7 +1427,7 @@ function bankBlock(r){
   const tbody = el('tbody');
   cocok.forEach(o => {
     const tr = el('tr');
-    const tag = o.status === 'cocok_fuzzy' ? '  ≈' : o.status === 'cocok_deposit' ? '  (nominal)'
+    const tag = o.status === 'cocok_fuzzy' ? '  ≈' : o.status === 'cocok_deposit' ? ('  (' + (o.bcode ? 'kode ' + o.bcode : 'nominal') + ')')
       : o.status === 'cocok_manual' ? ('  (audit manual' + (o.bAmt != null && o.bAmt !== o.jumlah ? ', selisih ' + rp(o.bAmt - o.jumlah) : '') + ')') : '';
     tr.innerHTML = '<td class="num">' + jam(o.tgl) + '</td><td>' + o.reseller + '</td><td class="n pos">' + rp(o.jumlah) + '</td><td class="num" style="font-size:11px">' + o.ref.slice(0,52) + tag + '</td>';
     tbody.append(tr);
@@ -1689,6 +1743,13 @@ function renderPengaturan(){
   });
   $('#mapClear').hidden = !keys.length;
 
+  const om = readOutletMap();
+  const omKeys = Object.keys(om);
+  if(document.activeElement !== $('#outletMapTa')) $('#outletMapTa').value = outletMapText(om);
+  const isDefault = !read(LS.outletMap);
+  $('#outletMapCount').textContent = omKeys.length + ' kode' + (isDefault ? ' (daftar bawaan)' : ' (diubah manual)');
+  $('#outletMapReset').hidden = isDefault;
+
   const av = Object.values(readAudit());
   const nCocok = av.filter(v => v === 'cocok').length, nBukan = av.filter(v => v === 'bukan').length;
   $('#auditCount').textContent = av.length ? (nCocok + ' ditandai cocok · ' + nBukan + ' ditandai bukan') : 'Belum ada keputusan.';
@@ -1715,6 +1776,30 @@ $('#mapClear').onclick = () => {
 };
 $('#auditClear').onclick = () => {
   if(confirm('Hapus semua keputusan audit manual?')){ writeAudit({}); renderPengaturan(); if(STATE) reanalyse(); toast('Keputusan audit dihapus'); }
+};
+function outletMapText(m){ return Object.keys(m).sort().map(k => k + '\t' + m[k]).join('\n'); }
+function parseOutletMapText(t){
+  const m = {};
+  String(t).split(/\r?\n/).forEach(line => {
+    const mm = line.match(/^\s*([A-Za-z]{2,4}\s*0*\d+)\s+(.+?)\s*$/);
+    if(!mm) return;
+    const code = mm[1].toUpperCase().replace(/\s+/g, '');
+    const name = mm[2].replace(/\s+/g, ' ').trim();
+    if(code && name) m[code] = name;
+  });
+  return m;
+}
+$('#outletMapSave').onclick = () => {
+  const m = parseOutletMapText($('#outletMapTa').value);
+  const n = Object.keys(m).length;
+  if(!n){ $('#outletMapMsg').textContent = 'Format tidak terbaca — pakai KODE<tab>NAMA per baris.'; return; }
+  $('#outletMapMsg').textContent = '';
+  writeOutletMap(m); renderPengaturan(); if(STATE) reanalyse(); toast(n + ' kode outlet disimpan');
+};
+$('#outletMapReset').onclick = () => {
+  if(confirm('Kembalikan peta nama outlet ke daftar bawaan?')){
+    store(LS.outletMap, null); renderPengaturan(); if(STATE) reanalyse(); toast('Peta nama outlet dikembalikan ke bawaan');
+  }
 };
 $('#wipeLocal').onclick = () => {
   if(!confirm('Hapus semua data lokal di peramban ini (draft & sandingan merchant)?')) return;
