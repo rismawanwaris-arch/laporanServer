@@ -688,24 +688,30 @@ function reconcileBank(bankName, otoRows, src){
   });
   oto.filter(o => o.status === 'pending').forEach(o => o.status = 'tidak_ada');
 
-  // Konfirmasi manual dari tabel Audit ("Cocok" ditekan user): sandingkan bank↔Otomax walau referensi beda.
+  // Pass nominal: setoran/deposit ke rekening ini yang Otomax catat generik ("Deposit - BCA",
+  // "Tiket deposit BRI …") tanpa referensi yang bisa dicocokkan. Nominal unik → sanding otomatis;
+  // kalau tidak, baris deposit tetap dimunculkan sebagai Otomax "belum ada bukti mutasi" supaya
+  // bisa disandingkan manual di tabel Audit (kredit bank ↔ deposit Otomax, per nominal).
+  const depoRe = new RegExp('DEPOSIT\\b[\\s-]*' + bankName + '\\b', 'i');
+  otoRows.forEach((r,i) => {
+    if(r._depoUsed || r.jumlah <= 0 || !depoRe.test(r.ket)) return;
+    r._depoUsed = true;
+    const cand = credit.filter(b => !b.matched && b.amount === r.jumlah);
+    const base = { ...r, i, isRev:false, ref:(r.ket || '(deposit)').trim(), normRef:'', toks:[] };
+    if(cand.length === 1){
+      cand[0].matched = true;
+      oto.push({ ...base, status:'cocok_deposit', bwaktu:cand[0].waktu });
+    } else {
+      oto.push({ ...base, status:'tidak_ada', bwaktu:'' });
+    }
+  });
+
+  // Konfirmasi manual dari tabel Audit ("Cocok" ditekan user): sandingkan bank↔Otomax walau
+  // referensi beda — termasuk baris deposit generik di atas.
   const aud = readAudit();
   oto.filter(o => o.status === 'tidak_ada').forEach(o => {
     const bm = credit.find(b => !b.matched && aud[auditKey(bankName, b, o)] === 'cocok');
     if(bm){ bm.matched = true; o.status = 'cocok_manual'; o.bwaktu = bm.waktu; o.bAmt = bm.amount; }
-  });
-
-  // Pass nominal: setoran/deposit ke rekening ini yang Otomax catat generik (tanpa referensi
-  // yang cocok — mis. "Auto Deposit BCA"). Sandingkan ke kredit bank yang belum terpakai, per nominal unik.
-  const depoRe = new RegExp('DEPOSIT\\s+' + bankName + '\\b', 'i');
-  otoRows.forEach((r,i) => {
-    if(r._depoUsed || r.jumlah <= 0 || !depoRe.test(r.ket)) return;
-    const cand = credit.filter(b => !b.matched && b.amount === r.jumlah);
-    if(cand.length === 1){
-      cand[0].matched = true; r._depoUsed = true;
-      oto.push({ ...r, i, isRev:false, ref:'(deposit — tanpa referensi)', normRef:'', toks:[],
-        status:'cocok_deposit', bwaktu:cand[0].waktu });
-    }
   });
 
   return { bank:bankName, oto, credit, unmatched:credit.filter(b => !b.matched), debit, warn:src.warn||0 };
@@ -759,7 +765,7 @@ function readAudit(){ try{ return JSON.parse(read(LS.auditOk) || '{}') || {}; }c
 function writeAudit(m){ store(LS.auditOk, JSON.stringify(m)); }
 function auditKey(bankName, b, o){
   return bankName + '|' + String(b.normRef || b.desc || '').slice(0,48) + '|' + b.amount
-       + '|' + String(o.normRef || o.ref || '').slice(0,48) + '|' + o.jumlah;
+       + '|' + String(o.normRef || o.ref || '').slice(0,48) + '|' + o.jumlah + '|' + (o.i != null ? o.i : '');
 }
 
 function reconcileQris(otoRows, qrisRows){
