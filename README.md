@@ -80,7 +80,7 @@ Buka `http://<ip-host>:<HOST_PORT>`. Data persist di `./data` (bind-mount). Heal
 | --- | --- |
 | **Import Data** | 5 kotak tempel + **Simpan data** (analisa + simpan ke server, ganti data tanggal yang sama). Daftar **data tersimpan** ada di bawahnya — klik **Buka** untuk membuka lagi. |
 | **Rekonsiliasi** | Hasil: kartu angka + tab Ringkasan / Rekonsiliasi / Kategori (termasuk rekap per tanggal) / Per outlet. Tombol **Simpan hasil** untuk simpan ulang setelah ubah sandingan. |
-| **Pengaturan** | Tema · sandingan merchant↔outlet · akun (login / ganti password) · link Kelola DB · hapus data lokal. |
+| **Pengaturan** | Tema · sandingan merchant↔outlet · **konsolidasi nama outlet** (peta `ID agen → nama outlet`, mis. `PLC68 → PLC DM`, dipakai saat mutasi BCA menyebut kode tapi Otomax mencatat deposit dengan nama) · keputusan audit manual · akun (login / ganti password) · link Kelola DB · hapus data lokal. |
 
 Header juga memuat **pemilih tanggal data** (auto dari keterangan `TGL` / kolom Tanggal, bisa diubah manual) dan toggle tema. Tanpa server, tombolnya jadi "Analisa data" saja.
 
