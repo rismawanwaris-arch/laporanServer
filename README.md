@@ -67,7 +67,7 @@ Buka `http://<ip-host>:<HOST_PORT>`. Data persist di `./data` (bind-mount). Heal
 | `GET /api/snapshots`        | daftar riwayat (`?limit=`, atau `?full=1`)         |
 | `POST /api/snapshots`       | `{ tanggal, catatan, sumber, ringkasan }` → simpan |
 | `GET /api/snapshots/:id`    | ambil satu (termasuk teks sumber)                  |
-| `PATCH /api/snapshots/:id`  | `{ tanggal?, catatan? }` → ubah                    |
+| `PATCH /api/snapshots/:id`  | `{ tanggal?, catatan?, ringkasan? }` → ubah (dipakai untuk menyimpan hasil analisa) |
 | `DELETE /api/snapshots/:id` | hapus satu                                         |
 | `POST /api/snapshots/hapus-semua` | `{ konfirmasi: "HAPUS SEMUA" }` → kosongkan  |
 | `POST /api/password`        | `{ current?, baru }` → set / ganti password (disimpan di DB, menang atas `APP_PASSWORD`) |
@@ -78,16 +78,19 @@ Buka `http://<ip-host>:<HOST_PORT>`. Data persist di `./data` (bind-mount). Heal
 
 | Menu | Isi |
 | --- | --- |
-| **Import Data** | 5 kotak tempel + **Simpan data** (analisa + simpan ke server, ganti data tanggal yang sama). Daftar **data tersimpan** ada di bawahnya — klik **Buka** untuk membuka lagi. |
-| **Rekonsiliasi** | Hasil: kartu angka + tab Ringkasan / Rekonsiliasi / Kategori (termasuk rekap per tanggal) / Per outlet. Tombol **Simpan hasil** untuk simpan ulang setelah ubah sandingan. |
+| **Import Data** | 5 kotak tempel / buka file + **Simpan ke database**. Data mentah langsung disimpan (belum dianalisa), dikelompokkan per tanggal usaha. Kalau isinya beberapa tanggal → pilih **gabung jadi 1 data** atau **pisah per tanggal** (tiap record menganalisa baris & mutasi bank tanggalnya sendiri). Daftar **data tersimpan** di bawah — klik **Analisa** untuk menjalankan rekonsiliasi. |
+| **Rekonsiliasi** | Hasil analisa dari record: kartu angka + tab Perlu perhatian / Ringkasan / Rekonsiliasi / Kategori (termasuk rekap per tanggal) / Per outlet. Tombol **Simpan hasil** untuk menyimpan ulang hasil (setelah ubah sandingan / keputusan audit) ke record yang sama. |
 | **Pengaturan** | Tema · sandingan merchant↔outlet · **konsolidasi nama outlet** (peta `ID agen → nama outlet`, mis. `PLC68 → PLC DM`, dipakai saat mutasi BCA menyebut kode tapi Otomax mencatat deposit dengan nama) · keputusan audit manual · akun (login / ganti password) · link Kelola DB · hapus data lokal. |
 
-Header juga memuat **pemilih tanggal data** (auto dari keterangan `TGL` / kolom Tanggal, bisa diubah manual) dan toggle tema. Tanpa server, tombolnya jadi "Analisa data" saja.
+Header juga memuat **pemilih tanggal data** (auto dari keterangan `TGL` / kolom Tanggal, bisa diubah manual) dan toggle tema. **Tanpa server** (artifact / file lokal) tidak ada DB — tombolnya jadi "Analisa data" dan analisa jalan langsung dari kotak seperti biasa.
 
 `/kelola` — halaman terpisah: tabel semua snapshot, edit tanggal/catatan, lihat detail (teks mentah), hapus satu / hapus semua, info ukuran DB.
 
-Satu *snapshot* menyimpan teks mentah yang ditempel (Otomax + tiap bank) plus ringkasan angka,
-jadi bisa dibuka lagi kapan saja lewat tombol **Buka** di daftar Import Data.
+Satu *record* menyimpan teks mentah yang ditempel (Otomax + tiap bank). Saat disimpan, ringkasannya
+masih ringan (kategori & total per tanggal). Setelah ditekan **Analisa**, hasil rekonsiliasi lengkap
+di-`PATCH` balik ke record itu, jadi daftar Import Data menampilkan angka final dan bisa dibuka lagi
+kapan saja. Record hasil "pisah per tanggal" menyimpan `ringkasan.fokusTanggal` — analisanya
+otomatis menyaring baris Otomax & mutasi bank ke tanggal itu saja.
 
 ## Catatan
 

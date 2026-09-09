@@ -249,7 +249,7 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
   <!-- ========== IMPORT DATA ========== -->
   <section class="view" id="view-import">
     <h2>Import data</h2>
-    <p class="lead">Tempel data mentah, cek tanggal di header, lalu <b>Simpan data</b>. Hasil rekonsiliasi muncul di menu <b>Rekonsiliasi</b> dan tersimpan di daftar bawah.</p>
+    <p class="lead" id="importLead">Tempel / buka file data mentah, lalu <b>Simpan ke database</b>. Data dikelompokkan per tanggal. Analisa (rekonsiliasi) dijalankan dari daftar <b>Data tersimpan</b> di bawah.</p>
     <div class="field">
       <label for="taOto">1 · Data Otomax <span class="opt">— Mutasi Reseller, wajib</span></label>
       <button type="button" class="filepick" data-t="taOto">📁 Buka file</button>
@@ -280,14 +280,30 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
     </div>
     <input type="file" id="filePick" accept=".csv,.xlsx,.txt,.tsv,text/csv" hidden>
     <div class="io-actions">
-      <button class="btn-primary" id="runBtn">Simpan data</button>
-      <button class="btn-ghost" id="analyzeOnly" hidden>Analisa tanpa simpan</button>
+      <button class="btn-primary" id="runBtn">Simpan ke database</button>
+      <input type="text" id="saveNote" placeholder="Catatan (opsional)" maxlength="200" style="font:inherit;font-size:13px;padding:9px 11px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);flex:1;min-width:150px;max-width:280px">
       <button class="btn-ghost" id="clearData">Kosongkan</button>
       <span class="err" id="ioErr"></span>
     </div>
 
+    <div class="setgroup" id="splitBox" hidden style="margin-top:16px">
+      <h3>Data berisi beberapa tanggal</h3>
+      <p class="hint" id="splitInfo" style="margin-bottom:10px"></p>
+      <div class="segmented" id="splitMode">
+        <button type="button" data-m="gabung" class="active">Simpan jadi 1 data (gabungan)</button>
+        <button type="button" data-m="pisah">Pisah per tanggal</button>
+      </div>
+      <p class="hint" id="splitModeHint" style="margin:8px 0 0"></p>
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn-primary" id="splitGo">Simpan</button>
+        <button class="btn-ghost" id="splitCancel">Batal</button>
+        <span class="err" id="splitMsg"></span>
+      </div>
+    </div>
+
     <div class="saved-block" id="savedBlock" hidden>
       <h3>Data tersimpan <span class="io-meta" id="histMeta"></span></h3>
+      <p class="hint" style="margin:-2px 0 10px">Klik <b>Analisa</b> untuk menjalankan rekonsiliasi atas data yang tersimpan.</p>
       <div id="histList" class="hist-list"></div>
       <div class="io-actions">
         <button class="btn-ghost" id="histRefresh">Muat ulang</button>
@@ -312,11 +328,12 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
         <button class="tab-save" id="saveBtn" hidden>Simpan hasil</button>
       </div>
       <div class="resbar" id="resbar" hidden>
-        <input type="text" id="saveNote" placeholder="Catatan untuk tanggal ini (opsional)" maxlength="200">
-        <button class="btn-primary" id="saveGo">Simpan ke server</button>
+        <span class="resbar-date" id="resbarInfo">Simpan hasil analisa (sandingan / keputusan audit) ke record ini?</span>
+        <button class="btn-primary" id="saveGo">Simpan hasil</button>
         <button class="btn-ghost" id="saveCancel">Batal</button>
         <span class="err" id="saveMsg"></span>
       </div>
+      <div class="banner" id="fokusBanner" hidden></div>
       <div class="tiles" id="tiles"></div>
       <div class="panel" id="p-perhatian"></div>
       <div class="panel" id="p-ringkasan" hidden></div>
@@ -920,17 +937,42 @@ function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = fals
 
 /* ---------- analyse ---------- */
 let STATE = null;
-function analyse(src, persist){
-  const otoRows = parseOtomax(src.oto);
+// Saring baris mutasi bank ke satu tanggal (untuk record hasil "pisah per tanggal").
+function rowDateISO(w){
+  if(!w) return null;
+  w = String(w).trim();
+  let m;
+  if((m = w.match(/^(\d{4})-(\d{2})-(\d{2})/))) return m[1] + '-' + m[2] + '-' + m[3];
+  if((m = w.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/))) return m[3] + '-' + String(m[2]).padStart(2,'0') + '-' + String(m[1]).padStart(2,'0');
+  if((m = w.match(/^(\d{1,2})-(\d{1,2})-(\d{4})/))) return m[3] + '-' + String(m[2]).padStart(2,'0') + '-' + String(m[1]).padStart(2,'0');
+  if((m = w.match(/^(\d{4})(\d{2})(\d{2})/))) return m[1] + '-' + m[2] + '-' + m[3];
+  const d = new Date(w); return isNaN(d) ? null : localDate(d);
+}
+function filterRowsByDate(rows, iso){
+  if(!rows || !rows.length) return rows;
+  const adaTanggal = rows.some(b => rowDateISO(b.waktu) != null);
+  if(!adaTanggal) return rows;                       // format tanggal tak dikenali → jangan buang
+  return rows.filter(b => { const d = rowDateISO(b.waktu); return d == null || d === iso; });
+}
+
+function analyse(src, persist, opts){
+  opts = opts || {};
+  const fokus = opts.fokusTanggal || null;
+  let otoRows = parseOtomax(src.oto);
   if(!otoRows.length){ $('#ioErr').textContent = 'Data Otomax tidak terbaca. Pastikan kolom dipisah TAB.'; return; }
   $('#ioErr').textContent = '';
   otoRows.forEach(r => { const c = categorise(r.ket); r.cat = c.name; r.arah = c.arah; r.sub = subChannel(r.ket); r.d = new Date(r.tgl); });
+  if(fokus){
+    otoRows = otoRows.filter(r => { const d = tanggalUsaha(r); return d && !isNaN(d) && localDate(d) === fokus; });
+    if(!otoRows.length){ $('#ioErr').textContent = 'Tidak ada baris Otomax untuk tanggal ' + fokus + '.'; return; }
+  }
 
   const parsed = {
     BRI:     src.bri.trim()  ? parseBankBRI(src.bri)      : null,
     BCA:     src.bca.trim()  ? parseBankBCA(src.bca)      : null,
     MANDIRI: src.mdr.trim()  ? parseBankMandiri(src.mdr)  : null,
   };
+  if(fokus) Object.values(parsed).forEach(p => { if(p) p.rows = filterRowsByDate(p.rows, fokus); });
   let qrisRows = null;
   if(src.qris.trim()){
     if(isBcaQrisCsv(src.qris))      qrisRows = { mode:'merchant', rows: parseBcaQrisCsv(src.qris) };
@@ -942,9 +984,14 @@ function analyse(src, persist){
   crossBank(bankRes);
   const qris = reconcileQris(otoRows, qrisRows);
 
-  STATE = { otoRows, parsed, bankRes, qris };
+  STATE = { otoRows, parsed, bankRes, qris, fokusTanggal:fokus, recordId: opts.recordId || null };
   if(persist !== false){
     store(LS.oto, src.oto); store(LS.bri, src.bri); store(LS.bca, src.bca); store(LS.mdr, src.mdr); store(LS.qris, src.qris);
+  }
+  const bn = $('#fokusBanner');
+  if(bn){
+    bn.hidden = !fokus;
+    if(fokus) bn.innerHTML = '<span>📅</span><span>Analisa difokuskan ke <b>' + tglS(new Date(fokus + 'T00:00:00')) + '</b> — baris Otomax & mutasi bank tanggal lain diabaikan (record hasil "pisah per tanggal").</span>';
   }
   $('#rekonEmpty').hidden = true;
   $('#rekonReady').hidden = false;
@@ -957,7 +1004,7 @@ function analyse(src, persist){
 // Analisa ulang tanpa mengubah simpanan (dipakai setelah ubah sandingan merchant), lalu kembali ke tab Rekonsiliasi.
 function reanalyse(){
   if(!STATE) return;
-  analyse(inputs(), false);
+  analyse(inputs(), false, { fokusTanggal: STATE.fokusTanggal, recordId: STATE.recordId });
   const rt = $('#tabs').querySelector('[data-tab="rekon"]');
   if(rt) rt.click();
 }
@@ -998,7 +1045,7 @@ function renderTiles(){
   const tarikN = otoRows.filter(r => (r.cat || '').startsWith('Tarik Tunai')).length;
   const storNet = storanAgg(otoRows).reduce((s,g) => s + g.net, 0);
   const admin = otoRows.filter(r => r.arah === 'biaya').reduce((s,r) => s + r.jumlah, 0);
-  const ds = otoRows.map(r => r.d).filter(d => !isNaN(d)).sort((a,b) => a - b);
+  const ds = otoRows.map(r => tanggalUsaha(r)).filter(d => d && !isNaN(d)).sort((a,b) => a - b);
   const range = ds.length ? (tglS(ds[0]) === tglS(ds[ds.length-1]) ? tglS(ds[0]) : tglS(ds[0]) + ' – ' + tglS(ds[ds.length-1])) : '—';
   const hasRec = bankRes.some(r => !r.noSource) || !qris.noSource;
 
@@ -1640,36 +1687,115 @@ function tampilanKosong(){
 function bisaSimpan(){ return SERVER_OK && !(AUTH.authRequired && !AUTH.authed); }
 function updateImportButtons(){
   const s = bisaSimpan();
-  $('#runBtn').textContent = s ? 'Simpan data' : 'Analisa data';
-  $('#analyzeOnly').hidden = !s;
+  $('#runBtn').textContent = s ? 'Simpan ke database' : 'Analisa data';
+  $('#saveNote').hidden = !s;
   $('#savedBlock').hidden = !s;
+  $('#importLead').hidden = false;
 }
 
-// Analisa + (kalau bisa) simpan ke server, ganti data tanggal yang sama.
-async function simpanData(){
-  analyse(inputs());                 // → pindah ke Rekonsiliasi; set STATE
-  if(!STATE) return;                  // gagal parse
-  if(!bisaSimpan()) return;
-  const tgl = $('#tglData').value;
-  try{
-    const dupes = (await SRV.list()).filter(r => r.tanggal === tgl);
-    if(dupes.length && !confirm('Data tanggal ' + tgl + ' sudah tersimpan. Ganti dengan yang ini?')){
-      toast('Ditampilkan tanpa disimpan'); return;
-    }
+/* ---------- alur baru: simpan ke DB dulu, analisa menyusul dari record ----------
+   Tanpa server (artifact / file lokal) tetap: tombol = analisa langsung dari kotak. */
+async function runImport(){
+  $('#ioErr').textContent = '';
+  if(!bisaSimpan()){ analyse(inputs()); return; }
+
+  const oto = parseOtomax(inputs().oto);
+  if(!oto.length){ $('#ioErr').textContent = 'Data Otomax wajib & harus terbaca (kolom dipisah TAB).'; return; }
+  oto.forEach(r => { r.d = new Date(r.tgl); });
+  const cnt = new Map();
+  oto.forEach(r => { const d = tanggalUsaha(r); const k = d && !isNaN(d) ? localDate(d) : null; if(k) cnt.set(k, (cnt.get(k) || 0) + 1); });
+  const dates = [...cnt.keys()].sort();
+
+  if(dates.length <= 1){
+    const tgl = dates[0] || ($('#tglData').dataset.touched ? $('#tglData').value : '') || localDate(new Date());
+    await simpanBatch([{ tanggal:tgl, fokus:null }]);
+  } else {
+    _pendingImport = { dates, cnt };
+    const parts = dates.map(k => tglS(new Date(k + 'T00:00:00')) + ' (' + cnt.get(k) + ' trx)').join(', ');
+    $('#splitInfo').textContent = 'Ditemukan ' + dates.length + ' tanggal: ' + parts + '.';
+    setSplitMode('gabung');
+    $('#splitMsg').textContent = '';
+    $('#splitBox').hidden = false;
+    $('#splitBox').scrollIntoView({ behavior:'smooth', block:'center' });
+  }
+}
+let _pendingImport = null;
+function setSplitMode(m){
+  $('#splitMode').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.m === m));
+  const d = _pendingImport ? _pendingImport.dates : [];
+  const dominan = d.slice().sort((a,b) => (_pendingImport.cnt.get(b)||0) - (_pendingImport.cnt.get(a)||0))[0];
+  $('#splitModeHint').textContent = m === 'gabung'
+    ? 'Semua baris jadi 1 record bertanggal ' + (dominan ? tglS(new Date(dominan + 'T00:00:00')) : '—') + '. Rincian per tanggal tetap terlihat di analisa.'
+    : d.length + ' record terpisah — tiap record menganalisa baris & mutasi bank tanggalnya sendiri.';
+}
+$('#splitMode').addEventListener('click', e => { const b = e.target.closest('button'); if(b) setSplitMode(b.dataset.m); });
+$('#splitCancel').onclick = () => { $('#splitBox').hidden = true; _pendingImport = null; };
+$('#splitGo').onclick = async () => {
+  if(!_pendingImport) return;
+  const mode = $('#splitMode').querySelector('button.active').dataset.m;
+  const { dates, cnt } = _pendingImport;
+  let jobs;
+  if(mode === 'gabung'){
+    const dominan = dates.slice().sort((a,b) => (cnt.get(b)||0) - (cnt.get(a)||0))[0];
+    jobs = [{ tanggal:dominan, fokus:null }];
+  } else {
+    jobs = dates.map(k => ({ tanggal:k, fokus:k }));
+  }
+  $('#splitGo').disabled = true;
+  try{ await simpanBatch(jobs); $('#splitBox').hidden = true; _pendingImport = null; }
+  catch(err){ $('#splitMsg').textContent = err.message; }
+  finally{ $('#splitGo').disabled = false; }
+};
+
+// Simpan satu / beberapa record data mentah ke DB (belum dianalisa). jobs: [{tanggal, fokus}]
+async function simpanBatch(jobs){
+  const src = inputs();
+  const catatan = $('#saveNote').value || '';
+  const list = await SRV.list();
+  let simpan = 0, ganti = 0;
+  for(const j of jobs){
+    const dupes = list.filter(r => r.tanggal === j.tanggal);
+    if(dupes.length && !confirm('Data tanggal ' + j.tanggal + ' sudah tersimpan. Ganti dengan import ini?')) continue;
     for(const d of dupes) await SRV.del(d.id);
-    const res = await SRV.save({ tanggal:tgl, catatan:$('#saveNote').value, sumber:inputs(), ringkasan:serverRingkasan() });
+    await SRV.save({ tanggal:j.tanggal, catatan, sumber:src, ringkasan:ringkasanRingan(src, j.fokus, j.tanggal) });
+    if(dupes.length) ganti++; else simpan++;
+  }
+  if(simpan || ganti){
     $('#saveNote').value = '';
-    toast((dupes.length ? 'Diperbarui: ' : 'Tersimpan: ') + res.tanggal);
+    ['oto','bri','bca','mdr','qris'].forEach(k => { $('#ta' + ({oto:'Oto',bri:'Bri',bca:'Bca',mdr:'Mdr',qris:'Qris'})[k]).value = ''; store(LS[k], null); });
+    toast((jobs.length > 1 ? jobs.length + ' data ' : 'Data ') + 'disimpan ke database — klik Analisa di daftar bawah');
     refreshHist();
-  }catch(err){
-    if(/login/i.test(err.message)) showLogin(); else toast(err.message);
+  } else {
+    toast('Tidak ada yang disimpan');
   }
 }
 
-$('#runBtn').onclick = simpanData;
-$('#analyzeOnly').onclick = () => analyse(inputs());
+// Ringkasan ringan saat simpan: kategori & total per tanggal, tanpa rekonsiliasi bank.
+function ringkasanRingan(src, fokus, tanggal){
+  const oto = parseOtomax(src.oto);
+  oto.forEach(r => { const c = categorise(r.ket); r.arah = c.arah; r.d = new Date(r.tgl); });
+  const scoped = fokus ? oto.filter(r => { const d = tanggalUsaha(r); return d && localDate(d) === fokus; }) : oto;
+  const by = new Map();
+  scoped.forEach(r => {
+    const d = tanggalUsaha(r); const k = d && !isNaN(d) ? localDate(d) : '?';
+    const g = by.get(k) || { tgl:k, n:0, masuk:0, admin:0 };
+    g.n++; if(r.arah === 'masuk') g.masuk += r.jumlah; if(r.arah === 'biaya') g.admin += r.jumlah;
+    by.set(k, g);
+  });
+  return {
+    ringan: true, dianalisa: false, fokusTanggal: fokus || null, tanggal,
+    perTanggal: [...by.values()].sort((a,b) => a.tgl < b.tgl ? -1 : 1),
+    otoN: scoped.length,
+    masuk: scoped.filter(r => r.arah === 'masuk').reduce((s,r) => s + r.jumlah, 0),
+    admin: scoped.filter(r => r.arah === 'biaya').reduce((s,r) => s + r.jumlah, 0),
+    punyaBank: { bri: !!src.bri.trim(), bca: !!src.bca.trim(), mdr: !!src.mdr.trim(), qris: !!src.qris.trim() },
+  };
+}
+
+$('#runBtn').onclick = runImport;
 $('#clearData').onclick = () => {
   ['oto','bri','bca','mdr','qris'].forEach(k => store(LS[k], null));
+  $('#splitBox').hidden = true; _pendingImport = null;
   tampilanKosong();
   toast('Semua kotak dikosongkan (sandingan merchant tetap disimpan)');
 };
@@ -1835,6 +1961,7 @@ const SRV = {
   list:   () => SRV.j(fetch('/api/snapshots')),
   get:    (id) => SRV.j(fetch('/api/snapshots/'+id)),
   save:   (body) => SRV.j(fetch('/api/snapshots',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})),
+  patch:  (id, body) => SRV.j(fetch('/api/snapshots/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})),
   del:    (id) => fetch('/api/snapshots/'+id,{method:'DELETE'}).then(r=>r.ok),
 };
 
@@ -1850,7 +1977,17 @@ function serverRingkasan(){
     banks[r.bank] = { kredit:s.kredit, kreditN:s.kreditN, cocokN:s.cocokN, salahN:s.salahN,
       tidakN:s.tidakN, tidakSum:s.tidakSum, unN:s.unN, unSum:s.unSum, debN:s.debN, debSum:s.debSum };
   });
+  const by = new Map();
+  otoRows.forEach(r => {
+    const d = tanggalUsaha(r); const k = d && !isNaN(d) ? localDate(d) : '?';
+    const g = by.get(k) || { tgl:k, n:0, masuk:0, admin:0 };
+    g.n++; if(r.arah === 'masuk') g.masuk += r.jumlah; if(r.arah === 'biaya') g.admin += r.jumlah;
+    by.set(k, g);
+  });
   return {
+    dianalisa: true,
+    fokusTanggal: STATE.fokusTanggal || null,
+    perTanggal: [...by.values()].sort((a,b) => a.tgl < b.tgl ? -1 : 1),
     otoN: otoRows.length,
     masuk: otoRows.filter(r=>r.arah==='masuk').reduce((s,r)=>s+r.jumlah,0),
     admin: otoRows.filter(r=>r.arah==='biaya').reduce((s,r)=>s+r.jumlah,0),
@@ -1891,7 +2028,7 @@ function afterAnalyse(){
     $('#tglData').value = tanggalDataOtomatis(STATE.otoRows);
   }
 }
-{ const _analyse = analyse; analyse = function(src, persist){ _analyse(src, persist); afterAnalyse(); }; }
+{ const _analyse = analyse; analyse = function(src, persist, opts){ _analyse(src, persist, opts); afterAnalyse(); }; }
 
 function showLogin(){ $('#loginModal').hidden = false; setTimeout(()=>$('#loginPw').focus(), 30); }
 
@@ -1925,19 +2062,29 @@ async function refreshHist(){
 function histRow(r){
   const d = el('div','hist-row');
   const s = r.ringkasan || {};
-  const bankBits = s.banks ? Object.entries(s.banks).map(([k,v]) => {
-    const n = (v.tidakN||0) + (v.unN||0); return k + ' ' + (n === 0 ? '✓' : 'cek ' + n);
-  }).join('  ·  ') : '';
   const dt = new Date(r.tanggal + 'T00:00:00');
   const tglTampil = isNaN(dt) ? r.tanggal : tglS(dt);
+  let info;
+  if(s.dianalisa || s.banks){
+    const bankBits = s.banks ? Object.entries(s.banks).map(([k,v]) => {
+      const n = (v.tidakN||0) + (v.unN||0); return k + ' ' + (n === 0 ? '✓' : 'cek ' + n);
+    }).join('  ·  ') : '';
+    info = (s.otoN ? s.otoN + ' baris  ·  ' : '') + bankBits;
+  } else {
+    const bank = s.punyaBank ? Object.entries(s.punyaBank).filter(([,v]) => v).map(([k]) => k.toUpperCase()).join('/') : '';
+    const multi = (s.perTanggal && s.perTanggal.length > 1) ? '  ·  ' + s.perTanggal.length + ' tanggal' : '';
+    info = 'belum dianalisa — ' + (s.otoN || 0) + ' baris Otomax' + (bank ? ' · bank ' + bank : '') + multi;
+  }
   d.append(
     Object.assign(el('span','hd'), { textContent: tglTampil, title: r.tanggal }),
-    Object.assign(el('span','hs'), { textContent:(s.otoN ? s.otoN + ' baris  ·  ' : '') + bankBits + '   ·   disimpan ' + String(r.dibuat_pada||'').replace('T',' ').slice(0,16) }),
+    Object.assign(el('span','hs'), { textContent: info + '   ·   disimpan ' + String(r.dibuat_pada||'').replace('T',' ').slice(0,16) + (s.fokusTanggal ? '  · fokus 1 tanggal' : '') }),
   );
-  const load = el('button','exp-btn','Buka'); load.onclick = () => loadSnapshot(r.id);
-  const del  = el('button','exp-btn','Hapus');
+  const go = el('button','exp-btn', (s.dianalisa || s.banks) ? 'Analisa ulang' : 'Analisa');
+  go.style.borderColor = 'var(--accent)'; go.style.color = 'var(--accent-ink)';
+  go.onclick = () => loadSnapshot(r.id);
+  const del = el('button','exp-btn','Hapus');
   del.onclick = async () => { if(confirm('Hapus data tanggal ' + tglTampil + '?')){ await SRV.del(r.id); refreshHist(); } };
-  d.append(load, del);
+  d.append(go, del);
   if(r.catatan) d.append(Object.assign(el('div','hn'), { textContent:r.catatan }));
   return d;
 }
@@ -1949,8 +2096,12 @@ async function loadSnapshot(id){
     $('#taMdr').value = s.mdr || ''; $('#taQris').value = s.qris || '';
     $('#tglData').value = snap.tanggal; $('#tglData').dataset.touched = '1';
     $('#saveNote').value = snap.catatan || '';
-    analyse(inputs(), false);   // → pindah ke menu Rekonsiliasi
-    toast('Dimuat: ' + snap.tanggal);
+    const fokus = (snap.ringkasan && snap.ringkasan.fokusTanggal) || null;
+    analyse(inputs(), false, { fokusTanggal:fokus, recordId:id });   // → pindah ke menu Rekonsiliasi
+    if(STATE){
+      try{ await SRV.patch(id, { ringkasan: serverRingkasan() }); refreshHist(); }catch(e){}
+      toast('Dianalisa: ' + snap.tanggal);
+    }
   }catch(err){ toast(err.message); }
 }
 
@@ -1965,12 +2116,19 @@ $('#saveGo').onclick = async () => {
   if(!STATE) return;
   $('#saveMsg').textContent = ''; $('#saveGo').disabled = true;
   try{
-    const tgl = $('#tglData').value;
-    const dupes = (await SRV.list()).filter(r => r.tanggal === tgl);
-    if(dupes.length && !confirm('Data tanggal ' + tgl + ' sudah tersimpan. Ganti?')){ $('#saveGo').disabled = false; return; }
-    for(const d of dupes) await SRV.del(d.id);
-    const res = await SRV.save({ tanggal:tgl, catatan:$('#saveNote').value, sumber:inputs(), ringkasan:serverRingkasan() });
-    toast((dupes.length ? 'Diperbarui: ' : 'Tersimpan: ') + res.tanggal); $('#saveNote').value = '';
+    if(STATE.recordId){
+      await SRV.patch(STATE.recordId, { ringkasan: serverRingkasan(), catatan: $('#saveNote').value || '' });
+      toast('Hasil analisa diperbarui');
+    } else {
+      // fallback (mode tanpa alur DB): simpan record baru
+      const tgl = $('#tglData').value;
+      const dupes = (await SRV.list()).filter(r => r.tanggal === tgl);
+      if(dupes.length && !confirm('Data tanggal ' + tgl + ' sudah tersimpan. Ganti?')){ $('#saveGo').disabled = false; return; }
+      for(const d of dupes) await SRV.del(d.id);
+      const res = await SRV.save({ tanggal:tgl, catatan:$('#saveNote').value, sumber:inputs(), ringkasan:serverRingkasan() });
+      STATE.recordId = res.id;
+      toast('Tersimpan: ' + res.tanggal);
+    }
     $('#resbar').hidden = true; $('#saveBtn').classList.remove('on');
     refreshHist();
   }catch(err){
@@ -1983,9 +2141,9 @@ async function initServer(){
   if(!ONLINE) return;
   try{
     const s = await SRV.session();
-    if(!s || typeof s.authRequired !== 'boolean') return;   // bukan server kita (mis. dibuka sebagai artifact)
+    if(!s || typeof s.authRequired !== 'boolean'){ if(_draftPending) analyse(inputs(), false); return; }   // bukan server kita (artifact) → analisa draft
     AUTH = s;
-  }catch{ return; }
+  }catch{ if(_draftPending) analyse(inputs(), false); return; }
   SERVER_OK = true;
   updateImportButtons();
   if(AUTH.authRequired && !AUTH.authed){ showLogin(); }
@@ -2023,6 +2181,7 @@ $('#tglData').addEventListener('change', async () => {
   }catch(e){}
 });
 
+let _draftPending = false;
 (function boot(){
   updateImportButtons();
   const savedOto = read(LS.oto);
@@ -2030,9 +2189,10 @@ $('#tglData').addEventListener('change', async () => {
     $('#taOto').value = savedOto;
     $('#taBri').value = read(LS.bri) || ''; $('#taBca').value = read(LS.bca) || '';
     $('#taMdr').value = read(LS.mdr) || ''; $('#taQris').value = read(LS.qris) || '';
-    analyse(inputs(), false);   // → menu Rekonsiliasi
+    // Mode server: draft = data yang belum disimpan; JANGAN auto-analisa (analisa lewat record).
+    // Mode standalone/artifact: tetap analisa langsung supaya bisa dipakai tanpa DB.
+    if(!ONLINE) analyse(inputs(), false); else _draftPending = true;
   }
-  // Hormati #hash kalau ada (mis. bookmark ke #pengaturan), selain itu default sesuai ada/tidaknya data
   const want = location.hash.slice(1);
   showView(VIEWS.includes(want) ? want : (STATE ? 'rekon' : 'import'));
   if(!STATE) $('#taOto').focus();

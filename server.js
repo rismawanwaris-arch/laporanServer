@@ -110,7 +110,7 @@ api.get("/snapshots/:id", (req, res) => {
 
 api.patch("/snapshots/:id", (req, res) => {
   const b = req.body || {};
-  const ok = db.ubah(req.params.id, { tanggal: b.tanggal, catatan: b.catatan });
+  const ok = db.ubah(req.params.id, { tanggal: b.tanggal, catatan: b.catatan, ringkasan: b.ringkasan });
   if (!ok) return res.status(404).json({ error: "Tidak ditemukan." });
   res.json({ ok: true });
 });
