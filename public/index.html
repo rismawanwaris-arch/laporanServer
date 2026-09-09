@@ -300,7 +300,8 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
     </div>
     <div id="rekonReady" hidden>
       <div class="tabs" role="tablist" id="tabs">
-        <button class="tab" role="tab" data-tab="ringkasan" aria-selected="true">Ringkasan</button>
+        <button class="tab" role="tab" data-tab="perhatian" aria-selected="true">Perlu perhatian</button>
+        <button class="tab" role="tab" data-tab="ringkasan" aria-selected="false">Ringkasan</button>
         <button class="tab" role="tab" data-tab="rekon" aria-selected="false">Rekonsiliasi</button>
         <button class="tab" role="tab" data-tab="kategori" aria-selected="false">Kategori</button>
         <button class="tab" role="tab" data-tab="outlet" aria-selected="false">Per outlet</button>
@@ -314,7 +315,8 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
         <span class="err" id="saveMsg"></span>
       </div>
       <div class="tiles" id="tiles"></div>
-      <div class="panel" id="p-ringkasan"></div>
+      <div class="panel" id="p-perhatian"></div>
+      <div class="panel" id="p-ringkasan" hidden></div>
       <div class="panel" id="p-rekon" hidden></div>
       <div class="panel" id="p-kategori" hidden></div>
       <div class="panel" id="p-outlet" hidden></div>
@@ -870,9 +872,9 @@ function analyse(src, persist){
   }
   $('#rekonEmpty').hidden = true;
   $('#rekonReady').hidden = false;
-  renderTiles(); renderRingkasan(); renderKategori(); renderRekon(); renderOutlet();
-  $('#tabs').querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.tab === 'ringkasan'));
-  ['ringkasan','rekon','kategori','outlet'].forEach(id => $('#p-' + id).hidden = (id !== 'ringkasan'));
+  renderTiles(); renderPerhatian(); renderRingkasan(); renderKategori(); renderRekon(); renderOutlet();
+  $('#tabs').querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.tab === 'perhatian'));
+  ['perhatian','ringkasan','rekon','kategori','outlet'].forEach(id => $('#p-' + id).hidden = (id !== 'perhatian'));
   showView('rekon');
 }
 
@@ -1021,7 +1023,16 @@ function renderRingkasan(){
     const w = el('div','tbl-scroll'); w.append(tbl); sc.append(w); p.append(sc);
   }
 
-  // flags — urutan: setoran bank yang belum tercatat (paling penting) dulu, baru catatan Otomax tanpa bukti
+  const nFlag = perhatianFlags().length;
+  const link = el('button','linklike', nFlag ? ('▸ ' + nFlag + ' hal perlu perhatian — buka tab') : '✓ Tidak ada yang perlu perhatian');
+  link.style.cssText = 'margin-top:4px;font-size:13.5px;' + (nFlag ? 'color:var(--crit)' : 'color:var(--good)');
+  link.onclick = () => { const t = $('#tabs').querySelector('[data-tab="perhatian"]'); if(t) t.click(); };
+  p.append(link);
+}
+
+// Kumpulan hal yang perlu ditindaklanjuti (dipakai tab Perlu Perhatian + hitungan di Ringkasan).
+function perhatianFlags(){
+  const { otoRows, bankRes, qris } = STATE;
   const flags = [];
   bankRes.forEach(r => {
     if(r.noSource) return;
@@ -1039,11 +1050,19 @@ function renderRingkasan(){
     qris.unmatched.forEach(q => flags.push({ cls:'warn', t:q.reseller + ' · ' + rp(q.jumlah), d:q.ket || qLbl, n:'Ada di ' + qLbl + ' tapi belum tersanding dengan outlet mana pun.' }));
   }
   otoRows.filter(r => r.arah === '?').slice(0,10).forEach(r => flags.push({ cls:'crit', t:r.reseller + ' · ' + rp(r.jumlah), d:r.ket, n:'Keterangan tidak masuk kategori mana pun.' }));
+  return flags;
+}
 
-  const c = el('div','card');
-  c.append(Object.assign(el('div','card-h'), { innerHTML:'<h3>Perlu perhatian</h3>' }));
-  const bd = el('div'); bd.style.padding = '14px';
-  if(!flags.length) bd.append(Object.assign(el('div','empty'), { textContent: (STATE.bankRes.some(r=>!r.noSource)||!qris.noSource) ? 'Tidak ada yang ganjil. Semua cocok.' : 'Tempel mutasi bank untuk cek rekonsiliasi.' }));
+function renderPerhatian(){
+  const p = $('#p-perhatian'); p.innerHTML = '';
+  p.append(el('h2', null, 'Perlu perhatian'));
+  const flags = perhatianFlags();
+  const crit = flags.filter(f => f.cls === 'crit').length;
+  p.append(Object.assign(el('p','lead'), { textContent: flags.length ? (flags.length + ' hal — ' + crit + ' mendesak. Urut dari yang paling penting (setoran bank belum tercatat).') : 'Semua setoran bank sudah tercatat di Otomax dan nominalnya cocok.' }));
+  const bd = el('div');
+  if(!flags.length){
+    bd.append(Object.assign(el('div','empty'), { textContent: (STATE.bankRes.some(r=>!r.noSource)||!STATE.qris.noSource) ? 'Tidak ada yang ganjil. Semua cocok ✓' : 'Import mutasi bank untuk cek rekonsiliasi.' }));
+  }
   flags.forEach(f => {
     const it = el('div','rec-item ' + f.cls);
     it.append(el('div','stripe'), el('div','meta'));
@@ -1051,7 +1070,7 @@ function renderRingkasan(){
     b.append(Object.assign(el('div','t'), { textContent:f.t }), Object.assign(el('div','d'), { textContent:f.d }), Object.assign(el('div','note ' + f.cls), { textContent:f.n }));
     it.append(b); bd.append(it);
   });
-  c.append(bd); p.append(c);
+  p.append(bd);
 }
 function rowHTML(cells){ const tr = el('tr'); tr.innerHTML = cells.map((c,i) => (i===0 ? '<td>'+c+'</td>' : (i===cells.length-1 ? '<td>'+c+'</td>' : '<td class="n">'+c+'</td>'))).join(''); return tr; }
 
@@ -1430,7 +1449,7 @@ function renderOutlet(){
 $('#tabs').addEventListener('click', e => {
   const b = e.target.closest('.tab'); if(!b) return;
   $('#tabs').querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t === b));
-  ['ringkasan','rekon','kategori','outlet'].forEach(id => $('#p-' + id).hidden = (id !== b.dataset.tab));
+  ['perhatian','ringkasan','rekon','kategori','outlet'].forEach(id => $('#p-' + id).hidden = (id !== b.dataset.tab));
 });
 
 /* ---------- menu bar / view switching ---------- */
