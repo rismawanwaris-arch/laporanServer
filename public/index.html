@@ -102,7 +102,10 @@ details.io[open]>summary::after{transform:rotate(90deg)}
 .io-body>.field{margin-top:14px}
 .io-banks{display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-top:16px}
 @media(max-width:720px){ .io-banks{grid-template-columns:1fr} }
-.field label{display:block; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin-bottom:6px; font-weight:600}
+.io-body>.field,.io-banks .field{position:relative}
+.filepick{position:absolute; top:-2px; right:0; z-index:2; font:inherit; font-size:11.5px; padding:3px 9px; border-radius:7px; cursor:pointer; border:1px solid var(--line); background:var(--raise); color:var(--ink-soft)}
+.filepick:hover{border-color:var(--accent); color:var(--accent-ink)}
+.field label{display:block; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin-bottom:6px; font-weight:600; padding-right:90px}
 .field label .opt{text-transform:none; font-weight:400; color:var(--ink-faint); letter-spacing:0}
 .field textarea{width:100%; height:150px; resize:vertical; padding:10px 12px; border-radius:8px; border:1px solid var(--line); background:var(--paper); color:var(--ink); font-family:"IBM Plex Mono",monospace; font-size:12px; line-height:1.45}
 .field.sm textarea{height:104px}
@@ -246,27 +249,33 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
     <p class="lead">Tempel data mentah, cek tanggal di header, lalu <b>Simpan data</b>. Hasil rekonsiliasi muncul di menu <b>Rekonsiliasi</b> dan tersimpan di daftar bawah.</p>
     <div class="field">
       <label for="taOto">1 · Data Otomax <span class="opt">— Mutasi Reseller, wajib</span></label>
-      <textarea id="taOto" spellcheck="false" placeholder="Tempel di sini. Kolom dipisah TAB: Tanggal · Nama Reseller · Jumlah · Keterangan"></textarea>
-      <div class="hint">Ekspor dari Otomax → Laporan → Mutasi Reseller, copy seluruh baris (boleh dengan baris judul).</div>
+      <button type="button" class="filepick" data-t="taOto">📁 Buka file</button>
+      <textarea id="taOto" spellcheck="false" placeholder="Buka file .xlsx / .csv dari Otomax, atau tempel (kolom TAB): Tanggal · Nama Reseller · Jumlah · Keterangan"></textarea>
+      <div class="hint">Otomax → Laporan → Mutasi Reseller → simpan Excel, lalu Buka file. Atau copy seluruh baris dan tempel.</div>
     </div>
     <div class="io-banks">
       <div class="field sm">
-        <label for="taBri">2 · Mutasi BRI <span class="opt">— format BRImo</span></label>
-        <textarea id="taBri" spellcheck="false" placeholder="3 baris per transaksi: keterangan / + Rp… / tanggal jam"></textarea>
+        <label for="taBri">2 · Mutasi BRI <span class="opt">— CSV ekspor / BRImo</span></label>
+        <button type="button" class="filepick" data-t="taBri">📁 Buka file</button>
+        <textarea id="taBri" spellcheck="false" placeholder="Buka file CSV mutasi BRI (ID,NOREK,TGL_TRAN,…) — atau tempel format BRImo (3 baris/transaksi)."></textarea>
       </div>
       <div class="field sm">
-        <label for="taBca">3 · Mutasi BCA <span class="opt">— e-statement</span></label>
-        <textarea id="taBca" spellcheck="false" placeholder="Tgl / Keterangan / Cabang / Jumlah / Saldo (apa adanya). Uang keluar hanya ditampilkan."></textarea>
+        <label for="taBca">3 · Mutasi BCA <span class="opt">— CSV ekspor / e-statement</span></label>
+        <button type="button" class="filepick" data-t="taBca">📁 Buka file</button>
+        <textarea id="taBca" spellcheck="false" placeholder="Buka file CSV mutasi BCA (Tanggal Transaksi,Keterangan,…) — atau tempel e-statement. Uang keluar hanya ditampilkan."></textarea>
       </div>
       <div class="field sm">
-        <label for="taMdr">4 · Mutasi Mandiri <span class="opt">— Livin</span></label>
-        <textarea id="taMdr" spellcheck="false" placeholder="Date / Remark / Reference / Debit / Credit / Balance"></textarea>
+        <label for="taMdr">4 · Mutasi Mandiri <span class="opt">— CSV ekspor / Livin</span></label>
+        <button type="button" class="filepick" data-t="taMdr">📁 Buka file</button>
+        <textarea id="taMdr" spellcheck="false" placeholder="Buka file CSV mutasi Mandiri (AccountNo;Ccy;PostDate;…) — atau tempel format Livin."></textarea>
       </div>
       <div class="field sm">
-        <label for="taQris">5 · QRIS BCA / BCA Merchant <span class="opt">— settlement, opsional</span></label>
-        <textarea id="taQris" spellcheck="false" placeholder="Tempel settlement BCA Merchant (Merchant Name · Merchant ID · Total Frequency · Total Amount) — atau file lama format Otomax. Dicocokkan per outlet dengan baris TARTUN QR BULK."></textarea>
+        <label for="taQris">5 · QRIS BCA <span class="opt">— settlement, opsional</span></label>
+        <button type="button" class="filepick" data-t="taQris">📁 Buka file</button>
+        <textarea id="taQris" spellcheck="false" placeholder="Buka file CSV mutasi rekening QRIS BCA (baris 'KR OTOMATIS MID : …') — atau settlement BCA Merchant (Merchant Name · ID · Freq · Amount). Dicocokkan per outlet dengan TARTUN QR BULK."></textarea>
       </div>
     </div>
+    <input type="file" id="filePick" accept=".csv,.xlsx,.txt,.tsv,text/csv" hidden>
     <div class="io-actions">
       <button class="btn-primary" id="runBtn">Simpan data</button>
       <button class="btn-ghost" id="analyzeOnly" hidden>Analisa tanpa simpan</button>
@@ -387,6 +396,7 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -492,10 +502,106 @@ function parseMandiri(text){
   return { rows, warn };
 }
 
+/* ---------- parser CSV ekspor resmi bank ---------- */
+function csvRows(text, delim){
+  const rows = []; let row = [], field = '', q = false;
+  for(let i = 0; i < text.length; i++){
+    const c = text[i];
+    if(q){ if(c === '"'){ if(text[i+1] === '"'){ field += '"'; i++; } else q = false; } else field += c; }
+    else if(c === '"') q = true;
+    else if(c === delim){ row.push(field); field = ''; }
+    else if(c === '\n'){ row.push(field); rows.push(row); row = []; field = ''; }
+    else if(c !== '\r') field += c;
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+const csvMoney = s => Math.round(parseFloat(String(s).replace(/,/g,'').trim()) || 0);
+
+// BCA — ekspor "Informasi Rekening - Mutasi Rekening" (CSV): Tanggal Transaksi,Keterangan,Cabang,Jumlah,Saldo
+function isBcaCsv(t){ return /"?Tanggal Transaksi"?\s*,\s*"?Keterangan"?/i.test(t); }
+function parseBcaCsv(text){
+  const rows = csvRows(text, ',');
+  const out = []; const hi = rows.findIndex(r => /tanggal transaksi/i.test(r[0] || ''));
+  for(let i = hi + 1; i < rows.length; i++){
+    const r = rows[i]; if(!r || r.length < 4) continue;
+    if(/^(saldo awal|mutasi (debet|kredit)|saldo akhir)/i.test((r[0] || '').trim())) break;
+    const desc = String(r[1] || '').replace(/\s+/g,' ').trim();
+    const m = String(r[3] || '').trim().match(/^([\d.,]+)\s+(CR|DB)$/i);
+    if(!desc || !m) continue;
+    const amt = csvMoney(m[1]) * (/db/i.test(m[2]) ? -1 : 1);
+    out.push({ desc, normRef:norm(desc), amount:amt, waktu:(r[0] || '').trim(), drcr:m[2].toUpperCase() });
+  }
+  return { rows: out, warn: 0 };
+}
+
+// BRI — ekspor resmi (CSV): ID,NOREK,TGL_TRAN,...,TRREMK,TLBDS1,TLBDS2,REMARK_CUSTOM
+function isBriCsv(t){ return /"?ID"?\s*,\s*"?NOREK"?\s*,\s*"?TGL_TRAN"?/i.test(t) || /"?TRREMK"?\s*,\s*"?TLBDS1"?/i.test(t); }
+function parseBriCsv(text){
+  const rows = csvRows(text, ',');
+  const hdr = (rows[0] || []).map(h => (h || '').toUpperCase().trim());
+  const ix = n => hdr.indexOf(n);
+  const iRemk = ix('TRREMK'), iCust = ix('REMARK_CUSTOM'), iK = ix('MUTASI_KREDIT'), iD = ix('MUTASI_DEBET'), iT = ix('TGL_TRAN'), iDesk = ix('DESK_TRAN');
+  const out = [];
+  for(let i = 1; i < rows.length; i++){
+    const r = rows[i]; if(!r || r.length < 10) continue;
+    const k = csvMoney(r[iK]), d = csvMoney(r[iD]);
+    const amt = k > 0 ? k : -d; if(!amt) continue;
+    const remk = String(r[iRemk] || r[iDesk] || '').replace(/\s+/g,' ').trim();
+    const cust = String(r[iCust] || '').replace(/\s+/g,' ').trim();
+    // BRILink/BRImo P2P: Otomax pakai kalimat "Transfer dari … via BRILink/BRImo" (= REMARK_CUSTOM)
+    const desc = (/^WBNKTRF\d+TO\d+$/i.test(remk) || /^NBMB\s/i.test(remk)) && cust ? cust : (remk || cust);
+    out.push({ desc, normRef:norm(desc), amount:amt, waktu:(r[iT] || '').trim() });
+  }
+  return { rows: out, warn: 0 };
+}
+
+// Mandiri — ekspor resmi (CSV titik-koma): AccountNo;Ccy;PostDate;Remarks;AdditionalDesc;Credit Amount;Debit Amount;Close Balance
+function isMandiriCsv(t){ return /AccountNo\s*;\s*Ccy\s*;\s*PostDate/i.test(t); }
+function parseMandiriCsv(text){
+  const rows = csvRows(text, ';');
+  const hdr = (rows[0] || []).map(h => (h || '').trim());
+  const ix = n => hdr.indexOf(n);
+  const iRem = ix('Remarks'), iC = ix('Credit Amount'), iD = ix('Debit Amount'), iP = ix('PostDate');
+  const out = [];
+  for(let i = 1; i < rows.length; i++){
+    const r = rows[i]; if(!r || r.length < 6) continue;
+    const c = csvMoney(r[iC]), d = csvMoney(r[iD]);
+    const amt = c > 0 ? c : -d; if(!amt) continue;
+    const desc = String(r[iRem] || '').replace(/\s+/g,' ').trim();
+    out.push({ desc, normRef:norm(desc), amount:amt, waktu:(r[iP] || '').trim() });
+  }
+  return { rows: out, warn: 0 };
+}
+
+// BCA QRIS — mutasi rekening penampung QRIS (CSV): baris "KR OTOMATIS MID : <mid> <merchant> QR : <bruto> DDR : <fee>"
+function isBcaQrisCsv(t){ return /KR OTOMATIS\s+MID\s*:/i.test(t); }
+function parseBcaQrisCsv(text){
+  const rows = csvRows(text, ',');
+  const agg = new Map();
+  for(const r of rows){
+    const m = String(r[1] || '').match(/KR OTOMATIS\s+MID\s*:\s*(\d+)\s+(.+?)\s+QR\s*:\s*([\d.]+)\s+DDR\s*:\s*([\d.]+)/i);
+    if(!m) continue;
+    const mid = m[1].replace(/^885/, '');
+    const merchant = m[2].replace(/\s+QR\s*$/i, '').replace(/\s+/g,' ').trim();
+    const g = agg.get(mid) || { merchant, mid, amount:0, fee:0, freq:0 };
+    g.amount += Math.round(parseFloat(m[3]) || 0);   // BRUTO — cocok dgn Otomax QR BULK
+    g.fee    += Math.round(parseFloat(m[4]) || 0);
+    g.freq++;
+    agg.set(mid, g);
+  }
+  return [...agg.values()];
+}
+
+// Dispatcher: pilih parser lama (tempel manual) atau CSV ekspor resmi, otomatis.
+function parseBankBRI(t){ return isBriCsv(t) ? parseBriCsv(t) : parseBRI(t); }
+function parseBankBCA(t){ return isBcaCsv(t) ? parseBcaCsv(t) : parseBCA(t); }
+function parseBankMandiri(t){ return isMandiriCsv(t) ? parseMandiriCsv(t) : parseMandiri(t); }
+
 /* ---------- categorisation ---------- */
 const CAT_RULES = [
-  [/^REV\s+ADMIN\s+TARTUN/i,        'REV Admin Tartun (koreksi potongan)', 'koreksi'],
-  [/^REV\s+TARTUN/i,                'REV Tartun (pembatalan)',             'koreksi'],
+  [/^(REV\s+)+ADMIN\s+TARTUN/i,     'REV Admin Tartun (koreksi potongan)', 'koreksi'],
+  [/^(REV\s+)+TARTUN/i,             'REV Tartun (pembatalan)',             'koreksi'],
   [/^ADMIN\s+TARTUN\s+BULK\s+QR/i,  'Admin Tartun Bulk QR',                'biaya'],
   [/^ADMIN\s+TARTUN\s+TGL/i,        'Admin Tartun (potongan harian)',      'biaya'],
   [/^ADMIN\s+TF\s+EDC/i,            'Admin TF EDC',                        'biaya'],
@@ -503,7 +609,7 @@ const CAT_RULES = [
   [/^AMBIL\s+STOR/i,                'Ambil Storan (uang keluar)',          'keluar'],
   [/^STOR[.\s]/i,                   'Storan Masuk (modal / stok)',         'masuk'],
   [/^BAYAR\s+KE\s+/i,               'Bayar ke Bank',                       'masuk'],
-  [/^(TIKET\s+)?DEPOSIT/i,          'Deposit Saldo',                      'masuk'],
+  [/^(TIKET\s+|AUTO\s+)?DEPOSIT/i,  'Deposit Saldo',                      'masuk'],
   [/^TARTUN\s+QR\s+BULK/i,          'Tarik Tunai — QRIS Bulk',            'masuk'],
   [/^TARTUN\s+QR/i,                 'Tarik Tunai — QRIS',                 'masuk'],
   [/^TARTUN\s+EDC/i,                'Tarik Tunai — EDC (gesek kartu)',    'masuk'],
@@ -568,6 +674,20 @@ function reconcileBank(bankName, otoRows, src){
     if(cand){ cand.matched = true; o.status = 'cocok_fuzzy'; o.bwaktu = cand.waktu; }
   });
   oto.filter(o => o.status === 'pending').forEach(o => o.status = 'tidak_ada');
+
+  // Pass nominal: setoran/deposit ke rekening ini yang Otomax catat generik (tanpa referensi
+  // yang cocok — mis. "Auto Deposit BCA"). Sandingkan ke kredit bank yang belum terpakai, per nominal unik.
+  const depoRe = new RegExp('DEPOSIT\\s+' + bankName + '\\b', 'i');
+  otoRows.forEach((r,i) => {
+    if(r._depoUsed || r.jumlah <= 0 || !depoRe.test(r.ket)) return;
+    const cand = credit.filter(b => !b.matched && b.amount === r.jumlah);
+    if(cand.length === 1){
+      cand[0].matched = true; r._depoUsed = true;
+      oto.push({ ...r, i, isRev:false, ref:'(deposit — tanpa referensi)', normRef:'', toks:[],
+        status:'cocok_deposit', bwaktu:cand[0].waktu });
+    }
+  });
+
   return { bank:bankName, oto, credit, unmatched:credit.filter(b => !b.matched), debit, warn:src.warn||0 };
 }
 
@@ -653,12 +773,18 @@ function reconcileMerchant(oto, merchRows){
     const c = avail().filter(o => norm(o.reseller) === norm(map[m.mid]));
     if(c.length) pair(c[0], m);
   });
-  // 2) nama outlet sama persis (setelah normalisasi)
+  // 2) nama outlet sama persis (setelah normalisasi). Kalau ada beberapa baris QR BULK dengan
+  //    nama sama (mis. bulk 2 tanggal berbeda), ambil yang nominalnya sama / paling dekat.
   merchRows.forEach(m => {
     if(m._used) return;
     const ms = qStrip(m.merchant); if(!ms) return;
     const c = avail().filter(o => qStrip(o.reseller) === ms);
     if(c.length === 1) pair(c[0], m);
+    else if(c.length > 1){
+      const exact = c.filter(o => o.jumlah === m.amount);
+      if(exact.length === 1) pair(exact[0], m);
+      else pair(c.slice().sort((a,b) => Math.abs(a.jumlah - m.amount) - Math.abs(b.jumlah - m.amount))[0], m);
+    }
   });
   // 3) nominal unik
   merchRows.forEach(m => {
@@ -722,15 +848,15 @@ function analyse(src, persist){
   otoRows.forEach(r => { const c = categorise(r.ket); r.cat = c.name; r.arah = c.arah; r.sub = subChannel(r.ket); r.d = new Date(r.tgl); });
 
   const parsed = {
-    BRI:     src.bri.trim()  ? parseBRI(src.bri)      : null,
-    BCA:     src.bca.trim()  ? parseBCA(src.bca)      : null,
-    MANDIRI: src.mdr.trim()  ? parseMandiri(src.mdr)  : null,
+    BRI:     src.bri.trim()  ? parseBankBRI(src.bri)      : null,
+    BCA:     src.bca.trim()  ? parseBankBCA(src.bca)      : null,
+    MANDIRI: src.mdr.trim()  ? parseBankMandiri(src.mdr)  : null,
   };
   let qrisRows = null;
   if(src.qris.trim()){
-    qrisRows = isBcaMerchant(src.qris)
-      ? { mode:'merchant', rows: parseBcaMerchant(src.qris) }
-      : { mode:'otomax',   rows: parseOtomax(src.qris) };
+    if(isBcaQrisCsv(src.qris))      qrisRows = { mode:'merchant', rows: parseBcaQrisCsv(src.qris) };
+    else if(isBcaMerchant(src.qris)) qrisRows = { mode:'merchant', rows: parseBcaMerchant(src.qris) };
+    else                             qrisRows = { mode:'otomax',   rows: parseOtomax(src.qris) };
   }
 
   const bankRes = BANKS.map(b => reconcileBank(b, otoRows, parsed[b]));
@@ -759,7 +885,7 @@ function reanalyse(){
 
 /* ---------- helpers for recon totals ---------- */
 function bankStats(r){
-  const cocok = r.oto.filter(o => o.status === 'cocok' || o.status === 'cocok_fuzzy');
+  const cocok = r.oto.filter(o => o.status === 'cocok' || o.status === 'cocok_fuzzy' || o.status === 'cocok_deposit');
   const salah = r.oto.filter(o => o.status === 'salah_bank');
   const tidak = r.oto.filter(o => o.status === 'tidak_ada');
   return {
@@ -1044,7 +1170,7 @@ function bankBlock(r){
   wrap.append(head);
 
   const g = k => r.oto.filter(o => o.status === k);
-  const cocok = [...g('cocok'), ...g('cocok_fuzzy')];
+  const cocok = [...g('cocok'), ...g('cocok_fuzzy'), ...g('cocok_deposit')];
   const chips = el('div','chips');
   const chip = (cls,label,n) => { const c = el('span','chip ' + cls); c.innerHTML = label + ' <span class="num">' + n + '</span>'; return c; };
   chips.append(
@@ -1092,7 +1218,7 @@ function bankBlock(r){
   const tbody = el('tbody');
   cocok.forEach(o => {
     const tr = el('tr');
-    tr.innerHTML = '<td class="num">' + jam(o.tgl) + '</td><td>' + o.reseller + '</td><td class="n pos">' + rp(o.jumlah) + '</td><td class="num" style="font-size:11px">' + o.ref.slice(0,52) + (o.status === 'cocok_fuzzy' ? '  ≈' : '') + '</td>';
+    tr.innerHTML = '<td class="num">' + jam(o.tgl) + '</td><td>' + o.reseller + '</td><td class="n pos">' + rp(o.jumlah) + '</td><td class="num" style="font-size:11px">' + o.ref.slice(0,52) + (o.status === 'cocok_fuzzy' ? '  ≈' : o.status === 'cocok_deposit' ? '  (nominal)' : '') + '</td>';
     tbody.append(tr);
   });
   tb.append(tbody); scr.append(tb); c.append(scr);
@@ -1335,6 +1461,54 @@ $('#clearData').onclick = () => {
   ['oto','bri','bca','mdr','qris'].forEach(k => store(LS[k], null));
   tampilanKosong();
   toast('Semua kotak dikosongkan (sandingan merchant tetap disimpan)');
+};
+
+/* ---------- buka file (CSV / XLSX) ---------- */
+function unesc(s){ return String(s).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#10;/g,'\n').replace(/&#13;/g,'\r').replace(/&apos;/g,"'").replace(/&amp;/g,'&'); }
+function xlsxToTsv(buf){
+  if(typeof fflate === 'undefined') throw new Error('Pustaka baca XLSX belum termuat — cek koneksi, atau simpan file sebagai CSV.');
+  const files = fflate.unzipSync(new Uint8Array(buf));
+  const dec = new TextDecoder();
+  const strings = [];
+  const ssFile = files['xl/sharedStrings.xml'];
+  if(ssFile){
+    const ss = dec.decode(ssFile);
+    for(const m of ss.matchAll(/<si>([\s\S]*?)<\/si>/g))
+      strings.push([...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map(x => unesc(x[1])).join(''));
+  }
+  // ambil sheet pertama
+  const sheetName = Object.keys(files).find(k => /^xl\/worksheets\/sheet1\.xml$/.test(k)) || Object.keys(files).find(k => /^xl\/worksheets\/.*\.xml$/.test(k));
+  const sheet = dec.decode(files[sheetName]);
+  const rows = {};
+  for(const cm of sheet.matchAll(/<c r="([A-Z]+)(\d+)"(?:[^>]*?t="([^"]*)")?[^>]*>(?:<v>([\s\S]*?)<\/v>|<is><t[^>]*>([\s\S]*?)<\/t><\/is>)?<\/c>/g)){
+    const col = cm[1], row = +cm[2], type = cm[3], v = cm[4], inl = cm[5];
+    let val = inl != null ? unesc(inl) : (v != null ? (type === 's' ? (strings[+v] ?? '') : v) : '');
+    (rows[row] = rows[row] || {})[col] = val;
+  }
+  const maxR = Math.max(0, ...Object.keys(rows).map(Number));
+  const out = [];
+  const cols = ['A','B','C','D','E','F','G','H'];
+  for(let r = 1; r <= maxR; r++){
+    const rr = rows[r] || {};
+    out.push(cols.map(c => rr[c] ?? '').join('\t').replace(/\t+$/,''));
+  }
+  return out.join('\n');
+}
+document.querySelectorAll('.filepick').forEach(btn => {
+  btn.onclick = () => { $('#filePick').dataset.target = btn.dataset.t; $('#filePick').click(); };
+});
+$('#filePick').onchange = async e => {
+  const f = e.target.files[0]; const target = $('#filePick').dataset.target;
+  e.target.value = '';
+  if(!f || !target) return;
+  try{
+    if(/\.xlsx$/i.test(f.name)){
+      $('#' + target).value = xlsxToTsv(await f.arrayBuffer());
+    } else {
+      $('#' + target).value = await f.text();
+    }
+    toast(f.name + ' dimuat');
+  }catch(err){ toast('Gagal baca file: ' + err.message); }
 };
 
 /* ---------- pengaturan ---------- */

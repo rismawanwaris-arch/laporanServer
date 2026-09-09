@@ -3,9 +3,19 @@
 Rekonsiliasi data **Otomax (Mutasi Reseller)** dengan mutasi **BCA, Mandiri, BRI** (dan opsional QRIS).
 Semua parsing & pencocokan berjalan di browser; server hanya untuk **menyimpan riwayat** hasil analisa harian.
 
-Slot ke-5 ("QRIS BCA / BCA Merchant") menerima **dua format**, dideteksi otomatis:
-- format lama seperti Otomax (per transaksi), dicocokkan per nama outlet;
-- **settlement BCA Merchant** (`Merchant Name · Merchant ID · Total Frequency · Total Amount`) — agregat per merchant, dicocokkan ke baris `TARTUN QR BULK` lewat: sandingan manual tersimpan → nama outlet → nominal unik → nama mirip. Merchant yang belum ketemu bisa disandingkan manual di tab Rekonsiliasi; pilihan disimpan per Merchant ID (`localStorage`, tidak ikut terhapus oleh "Hapus data") dan otomatis dipakai lagi.
+## Format sumber yang diterima (deteksi otomatis)
+
+Tiap kotak punya tombol **📁 Buka file** (atau tempel manual).
+
+| Sumber | Format |
+| --- | --- |
+| **Otomax** | `.xlsx` ekspor Otomax (dibaca langsung di browser), atau tempel TSV `Tanggal · Nama Reseller · Jumlah · Keterangan` |
+| **BRI** | CSV ekspor resmi (`ID,NOREK,TGL_TRAN,…,TRREMK,…,REMARK_CUSTOM`) — atau tempel format BRImo (3 baris/transaksi) |
+| **BCA** | CSV ekspor "Informasi Rekening" (`Tanggal Transaksi,Keterangan,Cabang,Jumlah,Saldo`) — atau tempel e-statement |
+| **Mandiri** | CSV ekspor titik-koma (`AccountNo;Ccy;PostDate;Remarks;…;Credit Amount;Debit Amount;…`) — atau tempel Livin |
+| **QRIS (slot 5)** | CSV mutasi rekening penampung QRIS (baris `KR OTOMATIS MID : <mid> <merchant> QR : <bruto> DDR : <fee>`, diagregat per merchant, **nilai bruto** dicocokkan ke `TARTUN QR BULK`); atau settlement BCA Merchant agregat (`Merchant Name · ID · Frequency · Amount`); atau file lama format Otomax |
+
+Setoran BCA yang di Otomax hanya tercatat generik ("Auto Deposit BCA", tanpa referensi) disandingkan ke kredit bank **per nominal unik** (status "cocok (nominal)"). Merchant QRIS yang namanya beda dari outlet Otomax bisa disandingkan manual di tab Rekonsiliasi — pilihan disimpan per Merchant ID (`localStorage`).
 
 ## Stack
 
