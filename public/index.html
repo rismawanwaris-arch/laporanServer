@@ -249,7 +249,7 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
   <!-- ========== IMPORT DATA ========== -->
   <section class="view" id="view-import">
     <h2>Import data</h2>
-    <p class="lead" id="importLead">Tempel / buka file data mentah, lalu <b>Simpan ke database</b>. Data dikelompokkan per tanggal. Analisa (rekonsiliasi) dijalankan dari daftar <b>Data tersimpan</b> di bawah.</p>
+    <p class="lead" id="importLead">Tempel / buka file data mentah, lalu <b>Simpan ke database</b>. Kalau isinya beberapa hari, otomatis dipisah jadi satu data per tanggal. Analisa (rekonsiliasi) dijalankan dari daftar <b>Data tersimpan</b> di bawah.</p>
     <div class="field">
       <label for="taOto">1 · Data Otomax <span class="opt">— Mutasi Reseller, wajib</span></label>
       <button type="button" class="filepick" data-t="taOto">📁 Buka file</button>
@@ -290,8 +290,8 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
       <h3>Data berisi beberapa tanggal</h3>
       <p class="hint" id="splitInfo" style="margin-bottom:10px"></p>
       <div class="segmented" id="splitMode">
-        <button type="button" data-m="gabung" class="active">Simpan jadi 1 data (gabungan)</button>
-        <button type="button" data-m="pisah">Pisah per tanggal</button>
+        <button type="button" data-m="pisah" class="active">Pisah per tanggal</button>
+        <button type="button" data-m="gabung">Gabung jadi 1 data</button>
       </div>
       <p class="hint" id="splitModeHint" style="margin:8px 0 0"></p>
       <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
@@ -1712,8 +1712,8 @@ async function runImport(){
   } else {
     _pendingImport = { dates, cnt };
     const parts = dates.map(k => tglS(new Date(k + 'T00:00:00')) + ' (' + cnt.get(k) + ' trx)').join(', ');
-    $('#splitInfo').textContent = 'Ditemukan ' + dates.length + ' tanggal: ' + parts + '.';
-    setSplitMode('gabung');
+    $('#splitInfo').textContent = 'Ditemukan ' + dates.length + ' tanggal: ' + parts + '. Default: dipisah jadi ' + dates.length + ' data — ganti ke "Gabung" kalau tanggal yang sedikit cuma ekor transaksi lama.';
+    setSplitMode('pisah');
     $('#splitMsg').textContent = '';
     $('#splitBox').hidden = false;
     $('#splitBox').scrollIntoView({ behavior:'smooth', block:'center' });
