@@ -1,0 +1,15 @@
+services:
+  rekap-tartun:
+    build: .
+    image: rekap-tartun
+    container_name: rekap-tartun
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Kosongkan APP_PASSWORD untuk menonaktifkan login.
+      APP_PASSWORD: "${APP_PASSWORD:-}"
+      PORT: "3000"
+      DATA_DIR: /app/data
+    volumes:
+      - ./data:/app/data

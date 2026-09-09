@@ -1,0 +1,1338 @@
+<title>Rekap Tartun</title>
+<meta name="description" content="Kategorisasi transaksi harian Otomax dan rekonsiliasi otomatis dengan mutasi bank BRI, BCA, Mandiri, dan QRIS.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Spectral:wght@500;600;700&display=swap">
+<style>
+:root{
+  --paper:#f4f2ec; --surface:#fffdf7; --surface-2:#ece8df; --raise:#fffefb;
+  --ink:#1b2130; --ink-soft:#565d70; --ink-faint:#898e9c;
+  --line:#dcd6c9; --line-soft:#e7e2d6;
+  --accent:#2b4a8b; --accent-ink:#213a70; --accent-soft:#e4eaf5;
+  --good:#2f7d54; --good-soft:#e2efe6; --good-line:#bcdcc7;
+  --warn:#916219; --warn-soft:#f6ecd6; --warn-line:#e6d3a8;
+  --crit:#a83e33; --crit-soft:#f6e1dd; --crit-line:#e7bcb4;
+  --shadow:0 1px 2px rgba(24,28,48,.05), 0 3px 10px rgba(24,28,48,.05);
+  --radius:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#13151c; --surface:#1b1e27; --surface-2:#242835; --raise:#20242f;
+    --ink:#e8e9ee; --ink-soft:#a6abba; --ink-faint:#767c8b;
+    --line:#31353f; --line-soft:#2a2e37;
+    --accent:#84a5e2; --accent-ink:#a9c2ef; --accent-soft:#232c3e;
+    --good:#5cba88; --good-soft:#183026; --good-line:#2c4a3a;
+    --warn:#d3a65e; --warn-soft:#302716; --warn-line:#4a3c22;
+    --crit:#e37b70; --crit-soft:#341f1c; --crit-line:#513029;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 3px 12px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#13151c; --surface:#1b1e27; --surface-2:#242835; --raise:#20242f;
+  --ink:#e8e9ee; --ink-soft:#a6abba; --ink-faint:#767c8b;
+  --line:#31353f; --line-soft:#2a2e37;
+  --accent:#84a5e2; --accent-ink:#a9c2ef; --accent-soft:#232c3e;
+  --good:#5cba88; --good-soft:#183026; --good-line:#2c4a3a;
+  --warn:#d3a65e; --warn-soft:#302716; --warn-line:#4a3c22;
+  --crit:#e37b70; --crit-soft:#341f1c; --crit-line:#513029;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 3px 12px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:"Spectral",Georgia,serif; font-weight:600; margin:0; text-wrap:balance; letter-spacing:.01em}
+.num{font-family:"IBM Plex Mono","SF Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums}
+.wrap{max-width:1160px; margin:0 auto; padding:0 20px}
+a{color:var(--accent-ink)}
+
+header{position:sticky; top:0; z-index:20; background:var(--paper); border-bottom:1px solid var(--line-soft)}
+.hbar{display:flex; align-items:baseline; gap:10px; padding:11px 20px; max-width:1160px; margin:0 auto}
+.brand{margin-right:auto; display:flex; align-items:baseline; gap:9px}
+.brand b{font-family:"Spectral",serif; font-weight:700; font-size:18px; letter-spacing:.02em}
+.brand span{font-size:11.5px; color:var(--ink-faint); letter-spacing:.02em}
+@media(max-width:560px){ .brand span{display:none} }
+.hbtn{font:inherit; font-size:13px; padding:7px 12px; border-radius:8px; cursor:pointer; border:1px solid var(--line); background:var(--raise); color:var(--ink-soft)}
+.hbtn:hover{border-color:var(--accent); color:var(--accent-ink)}
+.hbtn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.hbtn.icon{padding:7px 10px; font-size:15px; line-height:1}
+.step{display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--accent); color:#fff; font-family:"IBM Plex Sans",sans-serif; font-size:12px; font-weight:600; flex:none}
+
+main{padding-top:22px; padding-bottom:80px}
+.banner{display:flex; gap:10px; align-items:flex-start; font-size:13.5px; background:var(--warn-soft); border:1px solid var(--warn-line); color:var(--warn); border-radius:8px; padding:10px 13px; margin-bottom:18px}
+.banner b{color:var(--warn)}
+
+details.io{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); margin-bottom:22px; overflow:hidden}
+details.io>summary{list-style:none; cursor:pointer; padding:14px 18px; display:flex; align-items:center; gap:12px; font-weight:600; font-family:"Spectral",serif}
+details.io>summary::-webkit-details-marker{display:none}
+details.io>summary::after{content:"▸"; color:var(--ink-faint); font-size:12px; transition:transform .15s}
+details.io[open]>summary::after{transform:rotate(90deg)}
+.io-meta{margin-left:auto; font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--ink-faint); font-weight:400}
+.io-body{padding:8px 18px 18px; border-top:1px solid var(--line-soft)}
+.io-body>.field{margin-top:14px}
+.io-banks{display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-top:16px}
+@media(max-width:720px){ .io-banks{grid-template-columns:1fr} }
+.field label{display:block; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin-bottom:6px; font-weight:600}
+.field label .opt{text-transform:none; font-weight:400; color:var(--ink-faint); letter-spacing:0}
+.field textarea{width:100%; height:150px; resize:vertical; padding:10px 12px; border-radius:8px; border:1px solid var(--line); background:var(--paper); color:var(--ink); font-family:"IBM Plex Mono",monospace; font-size:12px; line-height:1.45}
+.field.sm textarea{height:104px}
+.field textarea:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent)}
+.hint{font-size:11.5px; color:var(--ink-faint); margin-top:5px}
+.io-actions{display:flex; gap:10px; align-items:center; margin-top:18px; flex-wrap:wrap}
+.btn-primary{font:inherit; font-weight:600; font-size:14px; padding:10px 20px; border-radius:8px; cursor:pointer; border:1px solid var(--accent); background:var(--accent); color:#fff}
+.btn-primary:hover{background:var(--accent-ink); border-color:var(--accent-ink)}
+.btn-primary:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.btn-ghost{font:inherit; font-size:13px; padding:9px 14px; border-radius:8px; cursor:pointer; border:1px solid var(--line); background:transparent; color:var(--ink-soft)}
+.btn-ghost:hover{border-color:var(--accent); color:var(--accent-ink)}
+.err{color:var(--crit); font-size:13px; margin-left:4px}
+
+.tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(172px,1fr)); gap:12px; margin-bottom:22px}
+.tile{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 15px; box-shadow:var(--shadow)}
+.tile .k{font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); font-weight:600}
+.tile .v{font-family:"IBM Plex Mono",monospace; font-size:17px; font-weight:500; margin-top:7px; letter-spacing:-.02em; overflow-wrap:anywhere}
+.tile .s{font-size:12px; color:var(--ink-faint); margin-top:3px}
+.tile.accent{border-color:var(--accent); background:var(--accent-soft)}
+.tile.good .v{color:var(--good)} .tile.crit .v{color:var(--crit)} .tile.warn .v{color:var(--warn)}
+
+.tabs{display:flex; gap:4px; align-items:center; border-bottom:1px solid var(--line); margin-bottom:16px; flex-wrap:wrap;
+  position:sticky; top:52px; z-index:15; background:var(--paper); padding-top:8px}
+.tabs-spacer{flex:1 1 auto}
+.tab{font:inherit; font-size:14px; font-weight:500; padding:9px 15px; cursor:pointer; border:none; background:none; color:var(--ink-soft); border-bottom:2px solid transparent; margin-bottom:-1px}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--accent-ink); border-bottom-color:var(--accent); font-weight:600}
+.tab:focus-visible{outline:2px solid var(--accent); outline-offset:-2px; border-radius:4px}
+.tab-save{font:inherit; font-size:13px; font-weight:600; padding:6px 14px; margin-bottom:4px; border-radius:8px; cursor:pointer; border:1px solid var(--accent); background:var(--accent); color:#fff}
+.tab-save:hover{background:var(--accent-ink)}
+.tab-save.on{background:var(--surface); color:var(--accent-ink)}
+.panel[hidden]{display:none}
+.panel h2{font-size:17px; margin-bottom:4px}
+.panel .lead{color:var(--ink-soft); font-size:13.5px; margin:0 0 16px}
+
+.subnav{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px}
+.subnav button{font:inherit; font-size:12.5px; font-weight:500; padding:5px 12px; border-radius:20px; cursor:pointer; border:1px solid var(--line); background:var(--raise); color:var(--ink-soft)}
+.subnav button[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:#fff}
+
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); margin-bottom:16px; overflow:hidden}
+.card-h{padding:12px 16px; border-bottom:1px solid var(--line-soft); display:flex; align-items:center; gap:10px}
+.card-h h3{font-size:14px}
+.card-h .r{margin-left:auto; display:flex; gap:8px}
+.tbl-scroll{overflow-x:auto}
+table{border-collapse:collapse; width:100%; font-size:13.5px}
+th,td{padding:9px 14px; text-align:left; border-bottom:1px solid var(--line-soft); white-space:nowrap}
+th{font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); font-weight:600; background:var(--surface-2)}
+th.sort{cursor:pointer; user-select:none}
+th.sort:hover{color:var(--accent-ink)}
+th.sort[data-dir]::after{content:" "attr(data-arrow); color:var(--accent)}
+td.n,th.n{text-align:right; font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums}
+tbody tr:hover{background:var(--surface-2)}
+tbody tr:last-child td{border-bottom:none}
+.tf-row td{border-top:2px solid var(--line); font-weight:600; background:var(--surface-2)}
+.pos{color:var(--good)} .neg{color:var(--crit)}
+.bar-cell{width:150px}
+.bar{height:7px; border-radius:4px; background:var(--accent); opacity:.85}
+.bar.neg{background:var(--crit)}
+.sub td{background:var(--paper); font-size:12.5px; color:var(--ink-soft)}
+.sub td:first-child{padding-left:30px}
+.exp-btn{font:inherit; font-size:12px; background:none; border:1px solid var(--line); border-radius:6px; padding:2px 7px; cursor:pointer; color:var(--ink-soft)}
+.exp-btn:hover{border-color:var(--accent); color:var(--accent-ink)}
+
+.bank-head{font-family:"Spectral",serif; font-size:15px; font-weight:600; margin:24px 0 12px; padding-bottom:6px; border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:baseline; flex-wrap:wrap}
+.bank-head .st{font-size:12px; font-family:"IBM Plex Mono",monospace; color:var(--ink-faint); font-weight:400}
+.bank-head:first-child{margin-top:0}
+
+.chip{display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:3px 9px; border-radius:20px; border:1px solid var(--line)}
+.chip.good{background:var(--good-soft); color:var(--good); border-color:var(--good-line)}
+.chip.warn{background:var(--warn-soft); color:var(--warn); border-color:var(--warn-line)}
+.chip.crit{background:var(--crit-soft); color:var(--crit); border-color:var(--crit-line)}
+.chip .num{font-weight:500}
+.chips{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px}
+
+.xcheck{font-family:"IBM Plex Mono",monospace; font-size:12.5px; line-height:1.7; background:var(--surface-2); border:1px solid var(--line-soft); border-radius:8px; padding:12px 15px; margin-bottom:16px; overflow-x:auto}
+.xcheck .ok{color:var(--good); font-weight:600}
+.xcheck .bad{color:var(--crit); font-weight:600}
+.xcheck b{color:var(--ink)}
+.xtable{width:100%; font-size:12.5px; margin-bottom:16px}
+.xtable th,.xtable td{padding:7px 12px}
+
+.rec-item{display:grid; grid-template-columns:5px minmax(64px,auto) 1fr; gap:0 12px; align-items:start; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; overflow:hidden; background:var(--raise)}
+.rec-item .stripe{background:var(--ink-faint); align-self:stretch}
+.rec-item.crit .stripe{background:var(--crit)} .rec-item.warn .stripe{background:var(--warn)} .rec-item.good .stripe{background:var(--good)}
+.rec-item .meta{padding:10px 0; font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--ink-faint)}
+.rec-item .body{padding:10px 13px 10px 0}
+.rec-item .body .t{font-weight:600; font-size:13.5px}
+.rec-item .body .t .num{font-weight:500}
+.rec-item .body .d{font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--ink-soft); margin-top:2px; white-space:normal; word-break:break-word}
+.rec-item .body .note{font-size:12.5px; color:var(--ink); margin-top:5px}
+.rec-item .body .note.crit{color:var(--crit)} .rec-item .body .note.warn{color:var(--warn)}
+
+.empty{color:var(--ink-faint); font-size:13.5px; padding:16px; text-align:center; font-style:italic}
+
+.modal[hidden]{display:none}
+.modal{position:fixed; inset:0; z-index:40; background:rgba(15,18,30,.5); display:flex; align-items:center; justify-content:center; padding:20px}
+.modal-box{background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,.3); width:min(680px,100%); max-height:82vh; display:flex; flex-direction:column; overflow:hidden}
+.modal-h{padding:13px 16px; border-bottom:1px solid var(--line-soft); display:flex; align-items:center; gap:10px}
+.modal-h h3{font-size:14px} .modal-h .r{margin-left:auto; display:flex; gap:8px}
+.modal-box textarea{flex:1; margin:0; border:none; border-radius:0; padding:13px 16px; font-family:"IBM Plex Mono",monospace; font-size:12px; background:var(--paper); color:var(--ink); resize:none; min-height:240px}
+.modal-box textarea:focus{outline:none}
+.toast{position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--paper); font-size:13px; padding:9px 16px; border-radius:8px; z-index:50; box-shadow:var(--shadow)}
+.toast[hidden]{display:none}
+footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px 40px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.resbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; background:var(--accent-soft); border:1px solid var(--accent); border-radius:var(--radius); padding:12px 14px; margin-bottom:18px}
+.resbar-date{font-size:12px; color:var(--ink-soft); display:flex; gap:6px; align-items:center; font-weight:600}
+.resbar input[type=date],.resbar input[type=text]{font:inherit; font-size:13px; padding:6px 9px; border-radius:7px; border:1px solid var(--line); background:var(--paper); color:var(--ink)}
+.resbar input[type=text]{flex:1; min-width:140px; font-weight:400}
+.hist-list{margin-top:12px; display:flex; flex-direction:column; gap:8px}
+.hist-row{display:flex; gap:8px 14px; align-items:baseline; flex-wrap:wrap; border:1px solid var(--line); border-radius:8px; padding:11px 14px; background:var(--raise)}
+.hist-row .hd{flex:none; font-weight:600; font-family:"Spectral",serif; font-size:15px; color:var(--ink); white-space:nowrap}
+.hist-row .hs{flex:1 1 180px; min-width:0; font-size:12px; color:var(--ink-faint)}
+.hist-row .exp-btn{flex:none}
+.hist-row .hn{flex-basis:100%; font-size:12.5px; color:var(--ink-soft)}
+.hist-empty{color:var(--ink-faint); font-style:italic; font-size:13px; padding:8px 2px}
+</style>
+
+<header>
+  <div class="hbar">
+    <div class="brand"><b>Rekap Tartun</b><span>mutasi bank &times; Otomax</span></div>
+    <button class="hbtn" id="histBtn" hidden>Riwayat</button>
+    <button class="hbtn icon" id="themeBtn" title="Ganti tema terang / gelap" aria-label="Ganti tema">◐</button>
+    <button class="hbtn" id="logoutBtn" hidden>Keluar</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <details class="io" id="io" open>
+    <summary><span class="step">1</span> Tempel data <span class="io-meta" id="ioMeta"></span></summary>
+    <div class="io-body">
+      <div class="field">
+        <label for="taOto">1 · Data Otomax <span class="opt">— Mutasi Reseller, wajib</span></label>
+        <textarea id="taOto" spellcheck="false" placeholder="Tempel di sini. Kolom dipisah TAB: Tanggal · Nama Reseller · Jumlah · Keterangan"></textarea>
+        <div class="hint">Ekspor dari Otomax → Laporan → Mutasi Reseller, copy seluruh baris (boleh dengan baris judul).</div>
+      </div>
+      <div class="io-banks">
+        <div class="field sm">
+          <label for="taBri">2 · Mutasi BRI <span class="opt">— format BRImo</span></label>
+          <textarea id="taBri" spellcheck="false" placeholder="3 baris per transaksi: keterangan / + Rp… / tanggal jam"></textarea>
+        </div>
+        <div class="field sm">
+          <label for="taBca">3 · Mutasi BCA <span class="opt">— e-statement</span></label>
+          <textarea id="taBca" spellcheck="false" placeholder="Tgl / Keterangan / Cabang / Jumlah / Saldo (apa adanya). Uang keluar hanya ditampilkan."></textarea>
+        </div>
+        <div class="field sm">
+          <label for="taMdr">4 · Mutasi Mandiri <span class="opt">— Livin</span></label>
+          <textarea id="taMdr" spellcheck="false" placeholder="Date / Remark / Reference / Debit / Credit / Balance"></textarea>
+        </div>
+        <div class="field sm">
+          <label for="taQris">5 · QRIS BCA / BCA Merchant <span class="opt">— settlement, opsional</span></label>
+          <textarea id="taQris" spellcheck="false" placeholder="Tempel settlement BCA Merchant (Merchant Name · Merchant ID · Total Frequency · Total Amount) — atau file lama format Otomax. Dicocokkan per outlet dengan baris TARTUN QR BULK."></textarea>
+        </div>
+      </div>
+      <div class="io-actions">
+        <button class="btn-primary" id="runBtn">Analisa data</button>
+        <button class="btn-ghost" id="clearData">Kosongkan</button>
+        <span class="err" id="ioErr"></span>
+      </div>
+    </div>
+  </details>
+
+  <details class="io" id="histBox" hidden>
+    <summary>Riwayat tersimpan <span class="io-meta" id="histMeta"></span></summary>
+    <div class="io-body">
+      <p class="hint" style="margin-top:12px">Hasil analisa yang pernah disimpan. Klik <b>Muat</b> untuk menampilkan lagi data suatu hari.</p>
+      <div id="histList" class="hist-list"></div>
+      <div class="io-actions">
+        <button class="btn-ghost" id="histRefresh">Muat ulang daftar</button>
+        <a class="btn-ghost" id="kelolaBtn" href="/kelola" style="text-decoration:none">Kelola semua data (edit / hapus / backup) →</a>
+      </div>
+    </div>
+  </details>
+
+  <section id="results" hidden>
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" data-tab="ringkasan" aria-selected="true">Ringkasan</button>
+      <button class="tab" role="tab" data-tab="rekon" aria-selected="false">Rekonsiliasi</button>
+      <button class="tab" role="tab" data-tab="kategori" aria-selected="false">Kategori</button>
+      <button class="tab" role="tab" data-tab="outlet" aria-selected="false">Per outlet</button>
+      <span class="tabs-spacer"></span>
+      <button class="tab-save" id="saveBtn" hidden>Simpan hasil</button>
+    </div>
+    <div class="resbar" id="resbar" hidden>
+      <label class="resbar-date">Tanggal data <input type="date" id="saveDate"></label>
+      <input type="text" id="saveNote" placeholder="Catatan (opsional)" maxlength="200">
+      <button class="btn-primary" id="saveGo">Simpan ke server</button>
+      <button class="btn-ghost" id="saveCancel">Batal</button>
+      <span class="err" id="saveMsg"></span>
+    </div>
+    <div class="tiles" id="tiles"></div>
+    <div class="panel" id="p-ringkasan"></div>
+    <div class="panel" id="p-rekon" hidden></div>
+    <div class="panel" id="p-kategori" hidden></div>
+    <div class="panel" id="p-outlet" hidden></div>
+  </section>
+</main>
+
+<footer>Semua proses berjalan di browser Anda. Tidak ada data yang dikirim ke mana pun.</footer>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-box">
+    <div class="modal-h">
+      <h3 id="modalTitle">Salin data</h3>
+      <div class="r">
+        <button class="btn-ghost" id="modalCopy">Salin</button>
+        <button class="hbtn" id="modalClose">Tutup</button>
+      </div>
+    </div>
+    <textarea id="modalTa" readonly spellcheck="false"></textarea>
+    <div class="hint" style="padding:8px 16px">Tempel (Ctrl+V) langsung ke Excel atau Google Sheets — kolom dipisah koma.</div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<div class="modal" id="loginModal" hidden>
+  <div class="modal-box" style="width:min(360px,100%)">
+    <div class="modal-h"><h3>Masuk</h3></div>
+    <form id="loginForm" style="padding:16px; display:flex; flex-direction:column; gap:10px">
+      <input type="password" id="loginPw" placeholder="Password" autocomplete="current-password"
+        style="font:inherit; padding:9px 12px; border-radius:8px; border:1px solid var(--line); background:var(--paper); color:var(--ink)">
+      <span class="err" id="loginErr"></span>
+      <button class="btn-primary" type="submit">Masuk</button>
+    </form>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const el = (t,c,txt) => { const e=document.createElement(t); if(c)e.className=c; if(txt!=null)e.textContent=txt; return e; };
+const LS = { oto:'rt-otomax', bri:'rt-bri', bca:'rt-bca', mdr:'rt-mandiri', qris:'rt-qris', theme:'rt-theme', qrisMap:'rt-qris-map' };
+const fmt = n => new Intl.NumberFormat('id-ID').format(Math.round(n));
+const rp  = n => (n<0?'−':'') + 'Rp' + fmt(Math.abs(n));
+const norm = s => (s||'').replace(/\s+/g,' ').trim().toUpperCase();
+const flat = s => (s||'').replace(/[^a-z0-9]/gi,'').toUpperCase();
+function store(k,v){ try{ v==null?localStorage.removeItem(k):localStorage.setItem(k,v);}catch(e){} }
+function read(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+
+const STOP = new Set(['TARTUN','TARUB','TRSF','BANKING','EBANKING','TRANSFER','INHOUSETRF','INHOUSE','MCM','DARI','VIA','BANK','BRIMO','BRILINK','GOPAY','DANA','SWITCHING','BFST','BIFAST','FAST','PEMBAYARAN','QRIS','SRVR','TARIK','TUNAI','SALDO','CR','DB','DR','TGL','THE','DAN']);
+function tokens(s){
+  return [...new Set((String(s).toUpperCase().match(/[A-Z0-9]{3,}/g)||[]).filter(t=>{
+    if(/\d{5,}/.test(t)) return true;
+    if(STOP.has(t)) return false;
+    return t.length >= 4;
+  }))];
+}
+
+/* ---------- theme ---------- */
+(function(){ const t = read(LS.theme); if(t) document.documentElement.dataset.theme = t; })();
+$('#themeBtn').onclick = () => {
+  const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next; store(LS.theme, next);
+};
+
+/* ---------- parsers ---------- */
+function parseOtomax(text){
+  const rows = [];
+  for(const line of text.split(/\r?\n/)){
+    if(!line.trim()) continue;
+    const p = line.split('\t');
+    if(p.length < 4) continue;
+    if(/^tanggal$/i.test(p[0].trim())) continue;
+    const amt = parseInt(String(p[2]).replace(/[^\d-]/g,''), 10);
+    if(Number.isNaN(amt)) continue;
+    rows.push({ tgl:p[0].trim(), reseller:p[1].trim().replace(/\s+/g,' '), jumlah:amt, ket:p.slice(3).join(' ').trim() });
+  }
+  return rows;
+}
+// BRI — BRImo: 3 lines/txn (desc / "+ Rp…" / datetime). Dots = ribuan.
+function parseBRI(text){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const rows = []; let warn = 0;
+  for(let i=0; i<lines.length; ){
+    const desc = lines[i], amtL = lines[i+1]||'', tsL = lines[i+2]||'';
+    if(!/rp/i.test(amtL)){ warn++; i++; continue; }
+    const sign = /^\s*[-−]/.test(amtL) ? -1 : 1;
+    const digits = amtL.replace(/[^\d]/g,'');
+    if(digits) rows.push({ desc, normRef:norm(desc), amount:sign*parseInt(digits,10), waktu:tsL });
+    i += 3;
+  }
+  return { rows, warn };
+}
+// BCA — e-statement, multi-line wrapped. Closing line has "…  <amount> CR|DB  <saldo>".
+function parseBCA(text){
+  const lines = text.split(/\r?\n/);
+  const rows = []; let warn = 0, buf = [];
+  const money = s => Math.round(parseFloat(String(s).replace(/,/g,'')) || 0);
+  for(let raw of lines){
+    if(!raw || !raw.trim()) continue;
+    if(/^\s*tgl\t/i.test(raw)) continue;
+    const parts = raw.split('\t');
+    const closeIdx = parts.findIndex(p => /^\s*[\d.,]+\s+(CR|DB)\s*$/i.test(p));
+    if(closeIdx >= 1){
+      buf.push(parts[0]);
+      const m = parts[closeIdx].trim().match(/^([\d.,]+)\s+(CR|DB)$/i);
+      const amt = money(m[1]) * (/db/i.test(m[2]) ? -1 : 1);
+      const desc = buf.join(' ').replace(/\s+/g,' ').trim();
+      rows.push({ desc, normRef:norm(desc), amount:amt, waktu:'', drcr:m[2].toUpperCase() });
+      buf = [];
+    } else if(/^\s*\d{1,2}\/\d{1,2}\/\d{2,4}/.test(parts[0])){
+      buf = parts.length > 1 ? [parts.slice(1).join(' ')] : [];
+    } else {
+      buf.push(parts.join(' '));
+    }
+  }
+  if(buf.length) warn++;
+  return { rows, warn };
+}
+// Mandiri — Livin: blank-line separated blocks of 6 lines (datetime / remark / ref / debit / credit / balance).
+function parseMandiri(text){
+  const blocks = text.split(/\r?\n\s*\r?\n/);
+  const rows = []; let warn = 0;
+  const money = s => Math.round(parseFloat(String(s).replace(/,/g,'')) || 0);
+  for(const blk of blocks){
+    const L = blk.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    if(L.length < 5) continue;
+    if(!/\d{1,2}\s+\w{3,}\s+\d{4}/.test(L[0])) continue;
+    const debit = money(L[L.length-3]), credit = money(L[L.length-2]);
+    const remark = L.slice(1, L.length-3).filter(x => x !== '-').join(' ');
+    const amt = credit > 0 ? credit : -debit;
+    if(amt === 0) continue;
+    rows.push({ desc:remark, normRef:norm(remark), amount:amt, waktu:L[0] });
+  }
+  return { rows, warn };
+}
+
+/* ---------- categorisation ---------- */
+const CAT_RULES = [
+  [/^REV\s+ADMIN\s+TARTUN/i,        'REV Admin Tartun (koreksi potongan)', 'koreksi'],
+  [/^REV\s+TARTUN/i,                'REV Tartun (pembatalan)',             'koreksi'],
+  [/^ADMIN\s+TARTUN\s+BULK\s+QR/i,  'Admin Tartun Bulk QR',                'biaya'],
+  [/^ADMIN\s+TARTUN\s+TGL/i,        'Admin Tartun (potongan harian)',      'biaya'],
+  [/^ADMIN\s+TF\s+EDC/i,            'Admin TF EDC',                        'biaya'],
+  [/^ADMIN\b/i,                     'Admin lainnya',                       'biaya'],
+  [/^AMBIL\s+STOR/i,                'Ambil Storan (uang keluar)',          'keluar'],
+  [/^STOR[.\s]/i,                   'Storan Masuk (modal / stok)',         'masuk'],
+  [/^BAYAR\s+KE\s+/i,               'Bayar ke Bank',                       'masuk'],
+  [/^(TIKET\s+)?DEPOSIT/i,          'Deposit Saldo',                      'masuk'],
+  [/^TARTUN\s+QR\s+BULK/i,          'Tarik Tunai — QRIS Bulk',            'masuk'],
+  [/^TARTUN\s+QR/i,                 'Tarik Tunai — QRIS',                 'masuk'],
+  [/^TARTUN\s+EDC/i,                'Tarik Tunai — EDC (gesek kartu)',    'masuk'],
+  [/^TARTUN\s+TF/i,                 'Tarik Tunai — Transfer Bank',        'masuk'],
+  [/^TARTUN/i,                      'Tarik Tunai — lainnya',              'masuk'],
+];
+function categorise(ket){
+  const k = ket.trim();
+  for(const [re,name,arah] of CAT_RULES) if(re.test(k)) return {name,arah};
+  return { name:'Lain-lain / tak dikenali', arah:'?' };
+}
+function subChannel(k){
+  k = k.toUpperCase();
+  if(/DANA\d/.test(k)) return 'DANA';
+  if(/GOPAY/.test(k)) return 'GoPay';
+  if(/BRIMO/.test(k)) return 'BRImo';
+  if(/BRILINK/.test(k)) return 'BRILink';
+  if(/BFST|BI-?FAST/.test(k)) return 'BI-FAST';
+  if(/INHOUSETRF|MCM/.test(k)) return 'Mandiri MCM';
+  if(/SWITCHING/.test(k)) return 'Switching antar bank';
+  if(/ATMLTRPRM|ATMSTRPRM/.test(k)) return 'ATM / setor-tarik BRI';
+  if(/WBNK/.test(k)) return 'WBNK';
+  if(/TRFHMB|MP #/.test(k)) return 'MP / TRFHMB';
+  if(/EDC#TRFLA|#EDC#/.test(k)) return 'EDC / TRFLA';
+  if(/TRSF E-BANKING/.test(k)) return 'BCA e-Banking';
+  if(/\bQR\b/.test(k)) return 'QRIS';
+  return 'Lainnya';
+}
+
+/* ---------- reconciliation ---------- */
+const BANKS = ['BRI','BCA','MANDIRI'];
+const OTO_BANK_RE = /^(REV\s+)?(?:TARTUN|BAYAR\s+KE)\s+(?:(?:TF|EDC)\s+)?(BRI|BCA|MANDIRI)\s+(.+?)\s*$/i;
+
+function reconcileBank(bankName, otoRows, src){
+  const oto = [];
+  otoRows.forEach((r,i) => {
+    const m = r.ket.match(OTO_BANK_RE);
+    if(!m || m[2].toUpperCase() !== bankName) return;
+    oto.push({ ...r, i, isRev:!!m[1], ref:m[3].trim(), normRef:norm(m[3]), toks:tokens(m[3]), status:'', bwaktu:'' });
+  });
+  if(!src){ oto.forEach(o => o.status = 'no_source'); return { bank:bankName, oto, credit:[], unmatched:[], debit:[], noSource:true, warn:0 }; }
+  const credit = src.rows.filter(b => b.amount > 0).map(b => ({ ...b, toks:tokens(b.desc), matched:false }));
+  const debit  = src.rows.filter(b => b.amount < 0);
+  const map = new Map();
+  credit.forEach(b => { const k = b.normRef + '|' + b.amount; (map.get(k) || map.set(k,[]).get(k)).push(b); });
+
+  oto.filter(o => !o.isRev && o.jumlah > 0).forEach(o => {
+    const arr = map.get(o.normRef + '|' + o.jumlah);
+    if(arr && arr.length){ const b = arr.shift(); b.matched = true; o.status = 'cocok'; o.bwaktu = b.waktu; }
+    else o.status = 'pending';
+  });
+  oto.filter(o => o.isRev || o.jumlah < 0).forEach(o => o.status = 'reversal');
+  const revKeys = new Set(oto.filter(o => o.isRev).map(o => o.normRef + '|' + Math.abs(o.jumlah)));
+  oto.filter(o => o.status === 'pending').forEach(o => { if(revKeys.has(o.normRef + '|' + o.jumlah)) o.status = 'dobel'; });
+  oto.filter(o => o.status === 'pending').forEach(o => {
+    const of = flat(o.normRef);
+    const cand = credit.find(b => {
+      if(b.matched || b.amount !== o.jumlah) return false;
+      const bf = flat(b.normRef);
+      return bf.includes(of) || of.includes(bf) || o.toks.some(t => b.toks.includes(t));
+    });
+    if(cand){ cand.matched = true; o.status = 'cocok_fuzzy'; o.bwaktu = cand.waktu; }
+  });
+  oto.filter(o => o.status === 'pending').forEach(o => o.status = 'tidak_ada');
+  return { bank:bankName, oto, credit, unmatched:credit.filter(b => !b.matched), debit, warn:src.warn||0 };
+}
+
+function crossBank(results){
+  const pool = [];
+  results.forEach(r => r.unmatched.forEach(b => pool.push({ b, bank:r.bank })));
+  results.forEach(r => {
+    r.oto.filter(o => o.status === 'tidak_ada').forEach(o => {
+      const of = flat(o.normRef);
+      const hit = pool.find(u => !u.b.matched && u.bank !== r.bank && u.b.amount === o.jumlah &&
+        (flat(u.b.normRef).includes(of) || of.includes(flat(u.b.normRef)) || o.toks.some(t => u.b.toks.includes(t))));
+      if(hit){ hit.b.matched = true; o.status = 'salah_bank'; o.realBank = hit.bank; o.bwaktu = hit.b.waktu; }
+    });
+  });
+  results.forEach(r => { r.unmatched = r.credit.filter(b => !b.matched); });
+}
+
+// BCA Merchant — settlement QRIS agregat: Merchant Name / Merchant ID / Total Frequency / Total Amount
+function parseBcaMerchant(text){
+  const rows = [];
+  for(const line of text.split(/\r?\n/)){
+    if(!line.trim()) continue;
+    const p = line.split('\t');
+    if(p.length < 4) continue;
+    if(/merchant\s*name/i.test(p[0]) || /merchant\s*id/i.test(p[1] || '')) continue;
+    const amt = parseInt(String(p[3]).replace(/[^\d]/g, ''), 10);
+    if(!amt) continue;
+    rows.push({
+      merchant: p[0].trim().replace(/\s+/g, ' '),
+      mid: String(p[1]).trim().replace(/\s+/g, ''),
+      freq: parseInt(String(p[2]).replace(/[^\d]/g, ''), 10) || 0,
+      amount: amt,
+    });
+  }
+  return rows;
+}
+function isBcaMerchant(text){
+  const first = (text.split(/\r?\n/).find(l => l.trim()) || '');
+  return /merchant\s*name\s*\t/i.test(first) || /\tmerchant\s*id\b/i.test(first)
+      || /^[^\t]+\t0*\d{6,}\t\d+\t\s*Rp/i.test(first);
+}
+
+const qStrip = s => norm(s).replace(/\b(PLC|KBB|CELL|CABANG|OUTLET|QR)\b/g, '').replace(/[^A-Z0-9]/g, '');
+function readQrisMap(){ try{ return JSON.parse(read(LS.qrisMap) || '{}') || {}; }catch{ return {}; } }
+function writeQrisMap(m){ store(LS.qrisMap, JSON.stringify(m)); }
+
+function reconcileQris(otoRows, qrisRows){
+  const oto = otoRows.filter(r => r.cat === 'Tarik Tunai — QRIS Bulk')
+    .map(r => ({ ...r, status:'', qris:null, note:'', merchant:null, mid:null }));
+  if(!qrisRows){ oto.forEach(o => o.status = 'no_source'); return { oto, unmatched:[], noSource:true, mode:null }; }
+  if(qrisRows.mode === 'merchant') return reconcileMerchant(oto, qrisRows.rows);
+
+  // mode lama: file QRIS BCA berformat Otomax (per outlet)
+  const qmap = new Map(); qrisRows.rows.forEach(q => qmap.set(norm(q.reseller), q));
+  const used = new Set();
+  oto.forEach(o => {
+    const q = qmap.get(norm(o.reseller));
+    if(!q){ o.status = 'tidak_ada'; return; }
+    used.add(norm(o.reseller)); o.qris = q.jumlah;
+    if(q.jumlah === o.jumlah) o.status = 'cocok';
+    else { o.status = 'selisih'; o.note = 'Otomax ' + rp(o.jumlah) + '  ·  QRIS BCA ' + rp(q.jumlah); }
+  });
+  const unmatched = qrisRows.rows.filter(q => !used.has(norm(q.reseller)));
+  return { oto, unmatched, mode:'otomax' };
+}
+
+function reconcileMerchant(oto, merchRows){
+  const map = readQrisMap();
+  const avail = () => oto.filter(o => !o.status);
+  merchRows.forEach(m => { m._used = false; });
+  const pair = (o, m) => {
+    o.qris = m.amount; o.merchant = m.merchant; o.mid = m.mid; o.freq = m.freq; m._used = true;
+    if(m.amount === o.jumlah){ o.status = 'cocok'; }
+    else {
+      o.status = 'selisih';
+      const d = m.amount - o.jumlah;
+      o.note = 'Otomax ' + rp(o.jumlah) + '  ·  BCA ' + rp(m.amount) + '  (selisih ' + (d > 0 ? '+' : '−') + rp(Math.abs(d)) + ')';
+    }
+  };
+  // 1) sandingan manual tersimpan (per Merchant ID)
+  merchRows.forEach(m => {
+    if(m._used || !map[m.mid]) return;
+    const c = avail().filter(o => norm(o.reseller) === norm(map[m.mid]));
+    if(c.length) pair(c[0], m);
+  });
+  // 2) nama outlet sama persis (setelah normalisasi)
+  merchRows.forEach(m => {
+    if(m._used) return;
+    const ms = qStrip(m.merchant); if(!ms) return;
+    const c = avail().filter(o => qStrip(o.reseller) === ms);
+    if(c.length === 1) pair(c[0], m);
+  });
+  // 3) nominal unik
+  merchRows.forEach(m => {
+    if(m._used) return;
+    const c = avail().filter(o => o.jumlah === m.amount);
+    if(c.length === 1) pair(c[0], m);
+  });
+  // 4) nama mirip & hanya satu kandidat (kasus selisih dengan nama nyambung)
+  merchRows.forEach(m => {
+    if(m._used) return;
+    const ms = qStrip(m.merchant); if(!ms) return;
+    const c = avail().filter(o => {
+      const os = qStrip(o.reseller); if(!os) return false;
+      return (ms.length >= 4 && os.startsWith(ms)) || (os.length >= 4 && ms.startsWith(os))
+          || (ms.length >= 5 && os.includes(ms)) || (os.length >= 5 && ms.includes(os));
+    });
+    if(c.length === 1) pair(c[0], m);
+  });
+  oto.forEach(o => { if(!o.status) o.status = 'tidak_ada'; });
+  const unmatched = merchRows.filter(m => !m._used).map(m => ({
+    reseller: m.merchant, jumlah: m.amount,
+    ket: 'Merchant ID ' + m.mid + (m.freq ? '  ·  ' + m.freq + '×' : ''),
+    merchant: m.merchant, mid: m.mid, amount: m.amount, freq: m.freq,
+  }));
+  return { oto, unmatched, mode:'merchant' };
+}
+
+function tindakLanjut(o){
+  const s = (o.ref + ' ' + o.ket).toUpperCase();
+  if(/TGL\s*\d/.test(s)) return { cls:'warn', txt:'Transaksi tanggal lain — cek mutasi bank di tanggal tersebut.' };
+  if(/SWITCHING|BI-?FAST CR TRANSFER DR|DR\s+0?\d{2,3}\b/.test(s)) return { cls:'warn', txt:'Kemungkinan masuk lewat bank lain (kode pengirim DRxxx). Tempel mutasi bank tsb untuk memastikan.' };
+  return { cls:'crit', txt:'Belum ketemu — pastikan dana benar-benar diterima di rekening.' };
+}
+
+/* ---------- CSV / modal ---------- */
+function csv(headers, rows){
+  const esc = v => { v = (v==null ? '' : String(v)); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
+  return [headers.join(','), ...rows.map(r => r.map(esc).join(','))].join('\n');
+}
+function showCopy(title, text){
+  $('#modalTitle').textContent = title;
+  const ta = $('#modalTa'); ta.value = text;
+  $('#modal').hidden = false; ta.focus(); ta.select();
+}
+$('#modalClose').onclick = () => $('#modal').hidden = true;
+$('#modal').onclick = e => { if(e.target.id === 'modal') $('#modal').hidden = true; };
+$('#modalCopy').onclick = async () => {
+  const ta = $('#modalTa'); ta.select();
+  try{ await navigator.clipboard.writeText(ta.value); toast('Tersalin ke clipboard'); }
+  catch(e){ try{ document.execCommand('copy'); toast('Tersalin'); }catch(_){ toast('Tekan Ctrl+C untuk menyalin'); } }
+};
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2200); }
+
+/* ---------- analyse ---------- */
+let STATE = null;
+function analyse(src, persist){
+  const otoRows = parseOtomax(src.oto);
+  if(!otoRows.length){ $('#ioErr').textContent = 'Data Otomax tidak terbaca. Pastikan kolom dipisah TAB.'; return; }
+  $('#ioErr').textContent = '';
+  otoRows.forEach(r => { const c = categorise(r.ket); r.cat = c.name; r.arah = c.arah; r.sub = subChannel(r.ket); r.d = new Date(r.tgl); });
+
+  const parsed = {
+    BRI:     src.bri.trim()  ? parseBRI(src.bri)      : null,
+    BCA:     src.bca.trim()  ? parseBCA(src.bca)      : null,
+    MANDIRI: src.mdr.trim()  ? parseMandiri(src.mdr)  : null,
+  };
+  let qrisRows = null;
+  if(src.qris.trim()){
+    qrisRows = isBcaMerchant(src.qris)
+      ? { mode:'merchant', rows: parseBcaMerchant(src.qris) }
+      : { mode:'otomax',   rows: parseOtomax(src.qris) };
+  }
+
+  const bankRes = BANKS.map(b => reconcileBank(b, otoRows, parsed[b]));
+  crossBank(bankRes);
+  const qris = reconcileQris(otoRows, qrisRows);
+
+  STATE = { otoRows, parsed, bankRes, qris };
+  if(persist !== false){
+    store(LS.oto, src.oto); store(LS.bri, src.bri); store(LS.bca, src.bca); store(LS.mdr, src.mdr); store(LS.qris, src.qris);
+  }
+  $('#io').open = false;
+  const cnt = bankRes.filter(r => !r.noSource).map(r => r.bank + ' ' + (r.credit.length + r.debit.length)).join(' · ');
+  $('#ioMeta').textContent = otoRows.length + ' baris Otomax' + (cnt ? '  ·  ' + cnt : '') + (qris.noSource ? '' : '  ·  QRIS ' + (STATE.qris.oto.length));
+  $('#results').hidden = false;
+  renderTiles(); renderRingkasan(); renderKategori(); renderRekon(); renderOutlet();
+  $('#tabs').querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.tab === 'ringkasan'));
+  ['ringkasan','rekon','kategori','outlet'].forEach(id => $('#p-' + id).hidden = (id !== 'ringkasan'));
+}
+
+// Analisa ulang tanpa mengubah simpanan (dipakai setelah ubah sandingan merchant), lalu kembali ke tab Rekonsiliasi.
+function reanalyse(){
+  if(!STATE) return;
+  analyse(inputs(), false);
+  const rt = $('#tabs').querySelector('[data-tab="rekon"]');
+  if(rt) rt.click();
+}
+
+/* ---------- helpers for recon totals ---------- */
+function bankStats(r){
+  const cocok = r.oto.filter(o => o.status === 'cocok' || o.status === 'cocok_fuzzy');
+  const salah = r.oto.filter(o => o.status === 'salah_bank');
+  const tidak = r.oto.filter(o => o.status === 'tidak_ada');
+  return {
+    kredit: r.credit.reduce((s,b) => s + b.amount, 0), kreditN: r.credit.length,
+    cocokSum: cocok.reduce((s,o) => s + o.jumlah, 0), cocokN: cocok.length,
+    salahN: salah.length, salahSum: salah.reduce((s,o)=>s+o.jumlah,0),
+    tidakN: tidak.length, tidakSum: tidak.reduce((s,o) => s + o.jumlah, 0),
+    unSum: r.unmatched.reduce((s,b) => s + b.amount, 0), unN: r.unmatched.length,
+    debSum: r.debit.reduce((s,b) => s + b.amount, 0), debN: r.debit.length,
+  };
+}
+
+/* ---------- tiles ---------- */
+function renderTiles(){
+  const { otoRows, bankRes, qris } = STATE;
+  const masuk = otoRows.filter(r => r.arah === 'masuk').reduce((s,r) => s + r.jumlah, 0);
+  const admin = otoRows.filter(r => r.arah === 'biaya').reduce((s,r) => s + r.jumlah, 0);
+  const ds = otoRows.map(r => r.d).filter(d => !isNaN(d)).sort((a,b) => a - b);
+  const range = ds.length ? (tglS(ds[0]) === tglS(ds[ds.length-1]) ? tglS(ds[0]) : tglS(ds[0]) + ' – ' + tglS(ds[ds.length-1])) : '—';
+  const hasRec = bankRes.some(r => !r.noSource) || !qris.noSource;
+
+  // Acuan = mutasi bank. Hitung dari sisi bank: total masuk, yang belum tercatat di Otomax, dan (arah balik) Otomax tanpa bukti mutasi.
+  let bankMasuk = 0, belumSum = 0, belumN = 0, otoTanpaN = 0, cocokN = 0;
+  bankRes.forEach(r => {
+    if(r.noSource) return;
+    const s = bankStats(r);
+    bankMasuk += s.kredit; belumSum += s.unSum; belumN += s.unN;
+    otoTanpaN += s.tidakN; cocokN += s.cocokN + s.salahN;
+  });
+  if(!qris.noSource){
+    const qc = qris.oto.filter(o => o.status === 'cocok'), qs = qris.oto.filter(o => o.status === 'selisih');
+    bankMasuk += qc.reduce((a,o)=>a+(o.qris||0),0) + qs.reduce((a,o)=>a+(o.qris||0),0) + qris.unmatched.reduce((a,q)=>a+q.jumlah,0);
+    belumSum += qris.unmatched.reduce((a,q)=>a+q.jumlah,0); belumN += qris.unmatched.length;
+    otoTanpaN += qris.oto.filter(o => o.status === 'tidak_ada').length + qs.length;
+    cocokN += qc.length;
+  }
+
+  const tiles = [
+    { k:'Transaksi Otomax', v:fmt(otoRows.length), s:range, cls:'' },
+    { k:'Uang masuk (tarik tunai dll)', v:rp(masuk), s:otoRows.filter(r=>r.arah==='masuk').length + ' transaksi', cls:'' },
+    { k:'Potongan admin', v:rp(admin), s:otoRows.filter(r=>r.arah==='biaya').length + ' potongan', cls:'warn' },
+  ];
+  if(hasRec){
+    tiles.push({ k:'Uang masuk di rekening bank (acuan)', v:rp(bankMasuk), s:fmt(cocokN) + ' setoran cocok dengan Otomax', cls:'accent' });
+    tiles.push({ k:'Belum tercatat di Otomax', v: belumN ? rp(belumSum) : 'Rp0', s: belumN ? belumN + ' setoran bank — segera input!' : 'semua setoran sudah diinput ✓', cls: belumN ? 'crit' : 'good' });
+    tiles.push({ k:'Otomax tanpa bukti mutasi', v: fmt(otoTanpaN), s: otoTanpaN ? 'dicatat, dana belum terlihat masuk' : 'semua catatan ada buktinya ✓', cls: otoTanpaN ? 'warn' : 'good' });
+  }
+  const box = $('#tiles'); box.innerHTML = '';
+  tiles.forEach(t => { const d = el('div','tile ' + t.cls); d.append(el('div','k',t.k), el('div','v',t.v), el('div','s',t.s)); box.append(d); });
+}
+function tglS(d){ return d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}); }
+function jam(iso){ const d = new Date(iso); return isNaN(d) ? String(iso).slice(0,16) : d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}); }
+
+/* ---------- ringkasan ---------- */
+function renderRingkasan(){
+  const { otoRows, bankRes, qris, parsed } = STATE;
+  const p = $('#p-ringkasan'); p.innerHTML = '';
+  p.append(el('h2',null,'Ringkasan hari ini'));
+  p.append(Object.assign(el('p','lead'), { textContent:'Acuan = mutasi rekening bank. Tiap setoran yang masuk dicek: sudah dicatat di Otomax atau belum.' }));
+
+  const warns = [];
+  bankRes.forEach(r => { if(r.warn) warns.push(r.warn + ' blok mutasi ' + r.bank + ' tidak terbaca rapi.'); });
+  if(warns.length){ const w = el('div','banner'); w.style.marginBottom='16px'; w.innerHTML = '<span>◆</span><div>' + warns.join(' ') + ' Periksa hasil salin-tempel.</div>'; p.append(w); }
+
+  const active = bankRes.filter(r => !r.noSource);
+  if(active.length || !qris.noSource){
+    const tb = el('table','xtable');
+    tb.innerHTML = '<thead><tr><th>Rekening (acuan)</th><th class="n">Uang masuk</th><th class="n">Sudah di Otomax</th><th class="n">Belum di Otomax</th><th class="n">Otomax tanpa bukti</th><th>Status</th></tr></thead>';
+    const body = el('tbody');
+    let tK=0,tC=0,tU=0,tT=0;
+    active.forEach(r => {
+      const s = bankStats(r); const jelas = s.kredit - s.unSum;
+      tK+=s.kredit; tC+=jelas; tU+=s.unSum; tT+=s.tidakSum;
+      const ok = s.unN === 0 && s.tidakN === 0;
+      body.append(rowHTML([r.bank, rp(s.kredit), rp(jelas),
+        s.unN ? '<span class="neg">' + rp(s.unSum) + ' · ' + s.unN + '</span>' : '·',
+        s.tidakN ? rp(s.tidakSum) + ' · ' + s.tidakN : '·',
+        ok ? '<span class="pos">seimbang ✓</span>' : '<span class="neg">cek ' + (s.unN+s.tidakN) + '</span>']));
+    });
+    if(!qris.noSource){
+      const qc = qris.oto.filter(o=>o.status==='cocok'), qs = qris.oto.filter(o=>o.status==='selisih'), qt = qris.oto.filter(o=>o.status==='tidak_ada');
+      const qK = qc.reduce((a,o)=>a+(o.qris||0),0) + qs.reduce((a,o)=>a+(o.qris||0),0) + qris.unmatched.reduce((a,q)=>a+q.jumlah,0);
+      const cocokSum = qc.reduce((a,o)=>a+o.jumlah,0);
+      body.append(rowHTML([qris.mode === 'merchant' ? 'BCA Merchant (QR)' : 'QRIS BCA', rp(qK), rp(cocokSum), qris.unmatched.length?rp(qris.unmatched.reduce((a,q)=>a+q.jumlah,0)):'·',
+        (qt.length+qs.length)?(qt.length+qs.length)+' outlet':'·',
+        (qris.unmatched.length||qt.length||qs.length) ? '<span class="neg">cek</span>' : '<span class="pos">seimbang ✓</span>']));
+    }
+    if(active.length > 1){
+      const tf = el('tr','tf-row');
+      tf.innerHTML = '<td>Total semua rekening</td><td class="n">'+rp(tK)+'</td><td class="n">'+rp(tC)+'</td><td class="n">'+(tU?rp(tU):'·')+'</td><td class="n">'+(tT?rp(tT):'·')+'</td><td></td>';
+      body.append(tf);
+    }
+    tb.append(body);
+    const sc = el('div','tbl-scroll'); sc.append(tb); p.append(sc);
+    const dbTot = active.reduce((s,r)=>s+bankStats(r).debSum,0);
+    if(dbTot < 0) p.append(Object.assign(el('p','lead'), { style:'margin-top:-6px', textContent:'Transaksi keluar / debit (tidak diperhitungkan): ' + rp(dbTot) + '. Lihat rincian di tab Rekonsiliasi.' }));
+  }
+
+  // flags — urutan: setoran bank yang belum tercatat (paling penting) dulu, baru catatan Otomax tanpa bukti
+  const flags = [];
+  bankRes.forEach(r => {
+    if(r.noSource) return;
+    r.unmatched.forEach(b => flags.push({ cls:'crit', t:r.bank + ' — belum tercatat di Otomax · ' + rp(b.amount), d:(b.waktu ? b.waktu + '  ·  ' : '') + b.desc, n:'Uang masuk di rekening ' + r.bank + ' tapi belum ada di Otomax. Input sekarang, atau pastikan bukan deposit/jenis lain.' }));
+  });
+  bankRes.forEach(r => {
+    if(r.noSource) return;
+    r.oto.filter(o => o.status === 'salah_bank').forEach(o => flags.push({ cls:'warn', t:o.reseller + ' · ' + rp(o.jumlah), d:o.ket, n:'Di Otomax dicatat ' + r.bank + ', tapi dananya masuk ke ' + o.realBank + '. Perbaiki label bank di Otomax.' }));
+    r.oto.filter(o => o.status === 'tidak_ada').forEach(o => { const t = tindakLanjut(o); flags.push({ cls:t.cls, t:o.reseller + ' · ' + rp(o.jumlah) + '  →  ' + r.bank, d:o.ket, n:t.txt }); });
+  });
+  if(!qris.noSource){
+    const qLbl = qris.mode === 'merchant' ? 'BCA Merchant' : 'QRIS BCA';
+    qris.oto.filter(o => o.status === 'selisih').forEach(o => flags.push({ cls:'crit', t:o.reseller + ' — selisih ' + qLbl, d:o.note, n:'Nominal ' + qLbl + ' berbeda dengan yang dicatat Otomax.' }));
+    qris.oto.filter(o => o.status === 'tidak_ada').forEach(o => flags.push({ cls:'warn', t:o.reseller + ' · ' + rp(o.jumlah), d:o.ket, n:'Ada QR BULK di Otomax tapi belum tersanding dengan baris ' + qLbl + '. Sandingkan manual di tab Rekonsiliasi.' }));
+    qris.unmatched.forEach(q => flags.push({ cls:'warn', t:q.reseller + ' · ' + rp(q.jumlah), d:q.ket || qLbl, n:'Ada di ' + qLbl + ' tapi belum tersanding dengan outlet mana pun.' }));
+  }
+  otoRows.filter(r => r.arah === '?').slice(0,10).forEach(r => flags.push({ cls:'crit', t:r.reseller + ' · ' + rp(r.jumlah), d:r.ket, n:'Keterangan tidak masuk kategori mana pun.' }));
+
+  const c = el('div','card');
+  c.append(Object.assign(el('div','card-h'), { innerHTML:'<h3>Perlu perhatian</h3>' }));
+  const bd = el('div'); bd.style.padding = '14px';
+  if(!flags.length) bd.append(Object.assign(el('div','empty'), { textContent: (STATE.bankRes.some(r=>!r.noSource)||!qris.noSource) ? 'Tidak ada yang ganjil. Semua cocok.' : 'Tempel mutasi bank untuk cek rekonsiliasi.' }));
+  flags.forEach(f => {
+    const it = el('div','rec-item ' + f.cls);
+    it.append(el('div','stripe'), el('div','meta'));
+    const b = el('div','body');
+    b.append(Object.assign(el('div','t'), { textContent:f.t }), Object.assign(el('div','d'), { textContent:f.d }), Object.assign(el('div','note ' + f.cls), { textContent:f.n }));
+    it.append(b); bd.append(it);
+  });
+  c.append(bd); p.append(c);
+}
+function rowHTML(cells){ const tr = el('tr'); tr.innerHTML = cells.map((c,i) => (i===0 ? '<td>'+c+'</td>' : (i===cells.length-1 ? '<td>'+c+'</td>' : '<td class="n">'+c+'</td>'))).join(''); return tr; }
+
+/* ---------- kategori ---------- */
+function catAgg(rows){
+  const m = new Map();
+  const withSub = ['Tarik Tunai — Transfer Bank','Tarik Tunai — EDC (gesek kartu)','Tarik Tunai — QRIS','Tarik Tunai — QRIS Bulk'];
+  rows.forEach(r => {
+    const g = m.get(r.cat) || { name:r.cat, n:0, sum:0, subs:new Map() };
+    g.n++; g.sum += r.jumlah;
+    if(withSub.includes(r.cat)){ const s = g.subs.get(r.sub) || { n:0, sum:0 }; s.n++; s.sum += r.jumlah; g.subs.set(r.sub, s); }
+    m.set(r.cat, g);
+  });
+  return [...m.values()].sort((a,b) => b.sum - a.sum);
+}
+function renderKategori(){
+  const { otoRows } = STATE;
+  const aggs = catAgg(otoRows);
+  const maxAbs = Math.max(...aggs.map(a => Math.abs(a.sum)), 1);
+  const p = $('#p-kategori'); p.innerHTML = '';
+  p.append(el('h2',null,'Transaksi per kategori'));
+  p.append(Object.assign(el('p','lead'), { textContent: aggs.length + ' kategori. Klik ▸ untuk rincian channel.' }));
+
+  const card = el('div','card');
+  const h = el('div','card-h'); h.innerHTML = '<h3>Rekap kategori</h3>';
+  const salin = el('button','exp-btn','Salin CSV');
+  salin.onclick = () => showCopy('Rekap kategori (CSV)', csv(['Kategori','Transaksi','Nilai'], aggs.map(a => [a.name, a.n, a.sum])));
+  const rr = el('div','r'); rr.append(salin); h.append(rr); card.append(h);
+
+  const sc = el('div','tbl-scroll'); const tb = el('table');
+  tb.innerHTML = '<thead><tr><th></th><th>Kategori</th><th class="n">Trx</th><th class="n">Nilai</th><th class="bar-cell"></th></tr></thead>';
+  const body = el('tbody');
+  let net = 0, ntrx = 0;
+  aggs.forEach(a => {
+    net += a.sum; ntrx += a.n;
+    const tr = el('tr');
+    const expTd = el('td');
+    const subRows = [];
+    if(a.subs.size){
+      const bx = el('button','exp-btn','▸');
+      bx.onclick = () => { const open = bx.textContent === '▾'; bx.textContent = open ? '▸' : '▾'; subRows.forEach(sr => sr.hidden = open); };
+      expTd.append(bx);
+    }
+    tr.append(expTd, Object.assign(el('td'), { textContent:a.name }), Object.assign(el('td','n'), { textContent:fmt(a.n) }));
+    const vTd = el('td','n ' + (a.sum < 0 ? 'neg' : 'pos')); vTd.textContent = rp(a.sum); tr.append(vTd);
+    const barTd = el('td'); const bar = el('div','bar' + (a.sum < 0 ? ' neg' : '')); bar.style.width = (Math.abs(a.sum)/maxAbs*100).toFixed(1) + '%'; barTd.append(bar); tr.append(barTd);
+    body.append(tr);
+    [...a.subs.entries()].sort((x,y) => y[1].sum - x[1].sum).forEach(([name,s]) => {
+      const st = el('tr','sub'); st.hidden = true;
+      st.innerHTML = '<td></td><td>' + name + '</td><td class="n">' + fmt(s.n) + '</td><td class="n pos">' + rp(s.sum) + '</td><td></td>';
+      body.append(st); subRows.push(st);
+    });
+  });
+  const tf = el('tr','tf-row');
+  tf.innerHTML = '<td></td><td>NET</td><td class="n">' + fmt(ntrx) + '</td><td class="n">' + rp(net) + '</td><td></td>';
+  body.append(tf);
+  tb.append(body); sc.append(tb); card.append(sc); p.append(card);
+}
+
+/* ---------- rekonsiliasi ---------- */
+function renderRekon(){
+  const p = $('#p-rekon'); p.innerHTML = '';
+  const { bankRes, qris } = STATE;
+  p.append(el('h2',null,'Rekonsiliasi mutasi'));
+
+  const anySrc = bankRes.some(r => !r.noSource) || !qris.noSource;
+  if(!anySrc){
+    p.append(Object.assign(el('p','lead'), { textContent:'Belum ada mutasi bank yang ditempel.' }));
+    p.append(Object.assign(el('div','empty'), { textContent:'Tempel mutasi BRI / BCA / Mandiri / QRIS di “Sumber data” lalu klik Analisa.' }));
+    return;
+  }
+  p.append(Object.assign(el('p','lead'), { textContent:'Acuan = mutasi bank. Tiap setoran masuk dicocokkan ke Otomax lewat teks referensi + nominal (BCA & Mandiri toleran beda format). Yang belum ketemu di Otomax = wajib ditindaklanjuti. Uang keluar BCA hanya ditampilkan.' }));
+
+  const tabsList = [['semua','Semua']];
+  bankRes.forEach(r => { if(!r.noSource) tabsList.push([r.bank.toLowerCase(), r.bank]); });
+  if(!qris.noSource) tabsList.push(['qris', qris.mode === 'merchant' ? 'BCA Merchant' : 'QRIS BCA']);
+  const nav = el('div','subnav');
+  const blocks = {};
+  tabsList.forEach(([id,label]) => {
+    const b = el('button',null,label); b.setAttribute('aria-pressed', id === 'semua');
+    b.onclick = () => {
+      nav.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed','false'));
+      b.setAttribute('aria-pressed','true');
+      Object.entries(blocks).forEach(([k,node]) => node.hidden = !(id === 'semua' || id === k));
+    };
+    nav.append(b);
+  });
+  p.append(nav);
+
+  bankRes.forEach(r => { if(!r.noSource) { const node = bankBlock(r); blocks[r.bank.toLowerCase()] = node; p.append(node); } });
+  if(!qris.noSource){ const node = qrisBlock(qris); blocks['qris'] = node; p.append(node); }
+}
+
+function recItem(cls, meta, titleHTML, desc, note){
+  const it = el('div','rec-item ' + cls);
+  it.append(el('div','stripe'), Object.assign(el('div','meta'), { textContent:meta }));
+  const b = el('div','body');
+  b.append(Object.assign(el('div','t'), { innerHTML:titleHTML }));
+  if(desc) b.append(Object.assign(el('div','d'), { textContent:desc }));
+  if(note) b.append(Object.assign(el('div','note ' + (note.cls||'')), { textContent:note.txt||note }));
+  it.append(b); return it;
+}
+function sect(title, items, render){
+  const c = el('div','card');
+  c.append(Object.assign(el('div','card-h'), { innerHTML:'<h3>' + title + ' <span class="num" style="color:var(--ink-faint);font-weight:400">' + items.length + '</span></h3>' }));
+  const bd = el('div'); bd.style.padding = '12px 14px';
+  if(!items.length) bd.append(Object.assign(el('div','empty'), { textContent:'—' }));
+  items.forEach(x => bd.append(render(x)));
+  c.append(bd); return c;
+}
+
+function bankBlock(r){
+  const wrap = el('div');
+  const s = bankStats(r);
+  const head = el('div','bank-head');
+  head.innerHTML = 'Mutasi ' + r.bank + ' <span class="st">' + s.kreditN + ' setoran masuk · ' + fmt(s.kredit)
+    + '  →  ' + s.cocokN + ' cocok, ' + r.unmatched.length + ' belum di Otomax'
+    + (s.debN ? '  ·  ' + s.debN + ' keluar' : '') + '</span>';
+  wrap.append(head);
+
+  const g = k => r.oto.filter(o => o.status === k);
+  const cocok = [...g('cocok'), ...g('cocok_fuzzy')];
+  const chips = el('div','chips');
+  const chip = (cls,label,n) => { const c = el('span','chip ' + cls); c.innerHTML = label + ' <span class="num">' + n + '</span>'; return c; };
+  chips.append(
+    chip(r.unmatched.length ? 'crit' : 'good', 'Setoran belum di Otomax', r.unmatched.length),
+    chip('good','Setoran cocok', cocok.length),
+    chip('warn','Otomax tanpa bukti mutasi', g('tidak_ada').length),
+    chip('warn','Salah label bank', g('salah_bank').length),
+    chip('warn','Dobel (sudah REV)', g('dobel').length),
+    chip('','Reversal', g('reversal').length),
+    chip('','Keluar / debit', r.debit.length),
+  );
+  wrap.append(chips);
+
+  // 1) ACUAN: setoran di mutasi bank yang belum ada di Otomax — paling penting
+  wrap.append(sect('Setoran masuk di ' + r.bank + ' yang BELUM tercatat di Otomax', r.unmatched,
+    b => recItem('crit', b.waktu || '', '<span class="num">' + rp(b.amount) + '</span>', b.desc,
+      { cls:'crit', txt:'Uang sudah masuk rekening. Input di Otomax sekarang — atau pastikan ini deposit / jenis lain.' })));
+
+  // 2) arah balik: Otomax mencatat, tapi tidak ada di mutasi bank
+  wrap.append(sect('Dicatat di Otomax, tapi tidak ada di mutasi ' + r.bank, g('tidak_ada'),
+    o => recItem(tindakLanjut(o).cls, jam(o.tgl), o.reseller + ' &nbsp; <span class="num">' + rp(o.jumlah) + '</span>', o.ket, tindakLanjut(o))));
+
+  if(g('salah_bank').length) wrap.append(sect('Salah label bank di Otomax', g('salah_bank'),
+    o => recItem('warn', jam(o.tgl), o.reseller + ' &nbsp; <span class="num">' + rp(o.jumlah) + '</span>', o.ket,
+      { cls:'warn', txt:'Dicatat ' + r.bank + ' di Otomax, tapi dana masuk ke ' + o.realBank + ' (' + (o.bwaktu||'') + '). Perbaiki labelnya.' })));
+
+  if(r.debit.length) wrap.append(sect('Transaksi keluar / debit ' + r.bank + ' — hanya ditampilkan, tidak dicocokkan', r.debit,
+    b => recItem('', b.waktu || '', '<span class="num neg">' + rp(b.amount) + '</span>', b.desc, null)));
+
+  // setoran yang sudah cocok ( diciutkan)
+  const c = el('div','card');
+  const h = el('div','card-h');
+  h.innerHTML = '<h3>Setoran cocok <span class="num" style="color:var(--ink-faint);font-weight:400">' + cocok.length + '</span></h3>';
+  const rr = el('div','r');
+  const sc = el('button','exp-btn','Salin CSV');
+  sc.onclick = () => showCopy('Rekonsiliasi ' + r.bank + ' (CSV)', csv(
+    ['Waktu Otomax','Outlet','Nominal','Status','Waktu bank','Keterangan Otomax'],
+    r.oto.map(o => [o.tgl, o.reseller, o.jumlah, o.status, o.bwaktu, o.ket])
+  ));
+  const tg = el('button','exp-btn','Tampilkan');
+  rr.append(tg, sc); h.append(rr); c.append(h);
+  const scr = el('div','tbl-scroll'); scr.hidden = true;
+  const tb = el('table');
+  tb.innerHTML = '<thead><tr><th>Waktu</th><th>Outlet</th><th class="n">Nominal</th><th>Referensi</th></tr></thead>';
+  const tbody = el('tbody');
+  cocok.forEach(o => {
+    const tr = el('tr');
+    tr.innerHTML = '<td class="num">' + jam(o.tgl) + '</td><td>' + o.reseller + '</td><td class="n pos">' + rp(o.jumlah) + '</td><td class="num" style="font-size:11px">' + o.ref.slice(0,52) + (o.status === 'cocok_fuzzy' ? '  ≈' : '') + '</td>';
+    tbody.append(tr);
+  });
+  tb.append(tbody); scr.append(tb); c.append(scr);
+  tg.onclick = () => { scr.hidden = !scr.hidden; tg.textContent = scr.hidden ? 'Tampilkan' : 'Sembunyikan'; };
+  wrap.append(c);
+  return wrap;
+}
+
+function qrisBlock(q){
+  const merchant = q.mode === 'merchant';
+  const LBL = merchant ? 'BCA Merchant' : 'QRIS BCA';
+  const wrap = el('div');
+  const cocok = q.oto.filter(o => o.status === 'cocok');
+  const selisih = q.oto.filter(o => o.status === 'selisih');
+  const tidak = q.oto.filter(o => o.status === 'tidak_ada');
+  const head = el('div','bank-head');
+  head.innerHTML = LBL + ' <span class="st">' + q.oto.length + ' outlet QR BULK di Otomax · ' + q.unmatched.length + ' baris ' + LBL + ' belum tersanding</span>';
+  wrap.append(head);
+  const chips = el('div','chips');
+  const chip = (cls,label,n) => { const c = el('span','chip ' + cls); c.innerHTML = label + ' <span class="num">' + n + '</span>'; return c; };
+  chips.append(
+    chip('good','Cocok', cocok.length),
+    chip('crit','Selisih nominal', selisih.length),
+    chip('warn','Otomax belum tersanding', tidak.length),
+    chip('warn', LBL + ' belum tersanding', q.unmatched.length),
+  );
+  wrap.append(chips);
+
+  wrap.append(sect('Selisih nominal (Otomax vs ' + LBL + ')', selisih,
+    o => recItem('crit', merchant ? (o.merchant || '') : jam(o.tgl), o.reseller, null, { cls:'crit', txt:o.note })));
+
+  wrap.append(sect('QR BULK di Otomax, belum ketemu pasangannya di ' + LBL, tidak,
+    o => recItem('warn', merchant ? '' : jam(o.tgl), o.reseller + ' &nbsp; <span class="num">' + rp(o.jumlah) + '</span>', o.ket, null)));
+
+  // Sandingan manual (khusus BCA Merchant): nama merchant ≠ nama outlet
+  if(merchant && q.unmatched.length){
+    const mc = el('div','card');
+    mc.append(Object.assign(el('div','card-h'), { innerHTML:'<h3>Sandingkan manual <span class="num" style="color:var(--ink-faint);font-weight:400">' + q.unmatched.length + '</span></h3>' }));
+    const mb = el('div'); mb.style.padding = '12px 14px';
+    mb.append(Object.assign(el('p','hint'), { style:'margin:0 0 10px', textContent:'Pilih outlet Otomax untuk tiap merchant yang belum ketemu. Pilihan disimpan (per Merchant ID) dan otomatis dipakai lagi besok.' }));
+    q.unmatched.forEach(m => {
+      const it = el('div','rec-item warn');
+      it.append(el('div','stripe'), Object.assign(el('div','meta'), { textContent:'ID ' + m.mid }));
+      const b = el('div','body');
+      b.append(Object.assign(el('div','t'), { innerHTML: m.merchant + ' &nbsp; <span class="num">' + rp(m.amount) + '</span>' + (m.freq ? ' &nbsp;<span class="num" style="color:var(--ink-faint)">' + m.freq + '×</span>' : '') }));
+      const sel = el('select');
+      sel.style.cssText = 'font:inherit;font-size:12.5px;margin-top:6px;padding:5px 8px;border-radius:7px;border:1px solid var(--line);background:var(--paper);color:var(--ink);max-width:100%';
+      sel.append(new Option('— pilih outlet —', ''));
+      tidak.forEach(o => sel.append(new Option(o.reseller.trim() + '  ·  ' + rp(o.jumlah) + (o.jumlah === m.amount ? '  (nominal sama)' : ''), o.reseller)));
+      sel.onchange = () => {
+        const map = readQrisMap();
+        if(sel.value) map[m.mid] = sel.value; else delete map[m.mid];
+        writeQrisMap(map);
+        toast('Sandingan disimpan — analisa ulang…');
+        reanalyse();
+      };
+      b.append(sel); it.append(b); mb.append(it);
+    });
+    mc.append(mb); wrap.append(mc);
+  } else if(q.unmatched.length){
+    wrap.append(sect('Ada di ' + LBL + ', belum ada QR BULK di Otomax', q.unmatched,
+      x => recItem('warn', '', x.reseller + ' &nbsp; <span class="num">' + rp(x.jumlah) + '</span>', x.ket, null)));
+  }
+
+  if(merchant && Object.keys(readQrisMap()).length){
+    const clr = el('button','exp-btn','Hapus semua sandingan manual (' + Object.keys(readQrisMap()).length + ')');
+    clr.style.marginBottom = '14px';
+    clr.onclick = () => { if(confirm('Hapus semua sandingan merchant↔outlet yang tersimpan?')){ writeQrisMap({}); toast('Sandingan dihapus'); reanalyse(); } };
+    wrap.append(clr);
+  }
+
+  const c = el('div','card');
+  const h = el('div','card-h');
+  h.innerHTML = '<h3>Outlet cocok <span class="num" style="color:var(--ink-faint);font-weight:400">' + cocok.length + '</span></h3>';
+  const rr = el('div','r');
+  const sc = el('button','exp-btn','Salin CSV');
+  sc.onclick = () => showCopy('Rekonsiliasi ' + LBL + ' (CSV)', csv(
+    merchant ? ['Outlet','Otomax','BCA Merchant','Selisih','Merchant','Merchant ID','Status']
+             : ['Outlet','Otomax','QRIS BCA','Status'],
+    q.oto.map(o => merchant
+      ? [o.reseller, o.jumlah, o.qris ?? '', (o.qris != null ? o.qris - o.jumlah : ''), o.merchant ?? '', o.mid ?? '', o.status]
+      : [o.reseller, o.jumlah, o.qris ?? '', o.status])
+  ));
+  const tg = el('button','exp-btn','Tampilkan');
+  rr.append(tg, sc); h.append(rr); c.append(h);
+  const scr = el('div','tbl-scroll'); scr.hidden = true;
+  const tb = el('table');
+  tb.innerHTML = merchant
+    ? '<thead><tr><th>Outlet</th><th>Merchant</th><th class="n">Nominal</th></tr></thead>'
+    : '<thead><tr><th>Outlet</th><th class="n">Nominal</th></tr></thead>';
+  const tbody = el('tbody');
+  cocok.forEach(o => {
+    const tr = el('tr');
+    tr.innerHTML = merchant
+      ? '<td>' + o.reseller + '</td><td style="font-size:12px;color:var(--ink-soft)">' + (o.merchant || '') + '</td><td class="n pos">' + rp(o.jumlah) + '</td>'
+      : '<td>' + o.reseller + '</td><td class="n pos">' + rp(o.jumlah) + '</td>';
+    tbody.append(tr);
+  });
+  tb.append(tbody); scr.append(tb); c.append(scr);
+  tg.onclick = () => { scr.hidden = !scr.hidden; tg.textContent = scr.hidden ? 'Tampilkan' : 'Sembunyikan'; };
+  wrap.append(c);
+  return wrap;
+}
+
+/* ---------- per outlet ---------- */
+function renderOutlet(){
+  const { otoRows } = STATE;
+  const m = new Map();
+  otoRows.forEach(r => {
+    const o = m.get(r.reseller) || { name:r.reseller, tt:0, ttn:0, admin:0, storIn:0, ambil:0, net:0 };
+    o.net += r.jumlah;
+    if(r.cat.startsWith('Tarik Tunai')){ o.tt += r.jumlah; o.ttn++; }
+    if(r.arah === 'biaya') o.admin += r.jumlah;
+    if(r.cat.startsWith('Storan Masuk')) o.storIn += r.jumlah;
+    if(r.cat.startsWith('Ambil Storan')) o.ambil += r.jumlah;
+    m.set(r.reseller, o);
+  });
+  const rows = [...m.values()];
+  const p = $('#p-outlet'); p.innerHTML = '';
+  p.append(el('h2',null,'Rekap per outlet'));
+  p.append(Object.assign(el('p','lead'), { textContent: rows.length + ' outlet. Klik judul kolom untuk urutkan.' }));
+  const card = el('div','card');
+  const h = el('div','card-h'); h.innerHTML = '<h3>Outlet</h3>';
+  const salin = el('button','exp-btn','Salin CSV');
+  salin.onclick = () => showCopy('Rekap per outlet (CSV)', csv(
+    ['Outlet','Tarik tunai','Trx','Potongan admin','Storan masuk','Ambil storan','Net'],
+    rows.map(r => [r.name, r.tt, r.ttn, r.admin, r.storIn, r.ambil, r.net])
+  ));
+  const rr = el('div','r'); rr.append(salin); h.append(rr); card.append(h);
+  const sc = el('div','tbl-scroll'); const tb = el('table');
+  const cols = [['name','Outlet',0],['tt','Tarik tunai',1],['ttn','Trx',1],['admin','Admin',1],['storIn','Storan msk',1],['ambil','Ambil stor',1],['net','Net',1]];
+  const thead = el('tr');
+  cols.forEach(([key,label,n]) => { const th = el('th', (n ? 'n ' : '') + 'sort', label); th.dataset.key = key; thead.append(th); });
+  const thd = el('thead'); thd.append(thead); tb.append(thd);
+  const tbody = el('tbody');
+  let sortKey = 'tt', sortDir = -1;
+  function draw(){
+    rows.sort((a,b) => { const av = a[sortKey], bv = b[sortKey]; const v = (typeof av === 'string') ? av.localeCompare(bv) : (av - bv); return v * sortDir; });
+    tbody.innerHTML = '';
+    rows.forEach(r => {
+      const tr = el('tr');
+      tr.innerHTML =
+        '<td>' + r.name + '</td>' +
+        '<td class="n pos">' + rp(r.tt) + '</td>' +
+        '<td class="n">' + fmt(r.ttn) + '</td>' +
+        '<td class="n ' + (r.admin < 0 ? 'neg' : '') + '">' + rp(r.admin) + '</td>' +
+        '<td class="n">' + (r.storIn ? rp(r.storIn) : '·') + '</td>' +
+        '<td class="n ' + (r.ambil < 0 ? 'neg' : '') + '">' + (r.ambil ? rp(r.ambil) : '·') + '</td>' +
+        '<td class="n ' + (r.net < 0 ? 'neg' : 'pos') + '">' + rp(r.net) + '</td>';
+      tbody.append(tr);
+    });
+    thead.querySelectorAll('th').forEach(th => { th.removeAttribute('data-dir'); th.removeAttribute('data-arrow'); if(th.dataset.key === sortKey){ th.dataset.dir = sortDir; th.dataset.arrow = sortDir < 0 ? '▾' : '▴'; } });
+  }
+  thead.querySelectorAll('th').forEach(th => th.onclick = () => {
+    const k = th.dataset.key;
+    if(k === sortKey) sortDir *= -1; else { sortKey = k; sortDir = (k === 'name') ? 1 : -1; }
+    draw();
+  });
+  draw();
+  tb.append(tbody); sc.append(tb); card.append(sc); p.append(card);
+}
+
+/* ---------- tabs ---------- */
+$('#tabs').addEventListener('click', e => {
+  const b = e.target.closest('.tab'); if(!b) return;
+  $('#tabs').querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t === b));
+  ['ringkasan','rekon','kategori','outlet'].forEach(id => $('#p-' + id).hidden = (id !== b.dataset.tab));
+});
+
+/* ---------- wiring ---------- */
+const inputs = () => ({ oto:$('#taOto').value, bri:$('#taBri').value, bca:$('#taBca').value, mdr:$('#taMdr').value, qris:$('#taQris').value });
+function tampilanKosong(){
+  ['taOto','taBri','taBca','taMdr','taQris'].forEach(id => $('#' + id).value = '');
+  STATE = null;
+  $('#results').hidden = true;
+  $('#resbar').hidden = true;
+  $('#ioMeta').textContent = '';
+  $('#io').open = true;
+  $('#taOto').focus();
+}
+
+$('#runBtn').onclick = () => analyse(inputs());
+$('#clearData').onclick = () => {
+  Object.values(LS).forEach(k => { if(k !== LS.theme && k !== LS.qrisMap) store(k, null); });
+  tampilanKosong();
+  toast('Semua kotak dikosongkan (sandingan merchant tetap disimpan)');
+};
+
+/* ---------- sinkron server (riwayat SQLite) ---------- */
+const ONLINE = /^https?:$/.test(location.protocol);
+let SERVER_OK = false;               // true hanya bila /api/session menjawab (mis. di-serve server.js)
+let AUTH = { authRequired:false, authed:true };
+const SRV = {
+  j: async (p) => { const r = await p; const d = await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error || (r.status===401?'Perlu login.':'Gagal ('+r.status+')')); return d; },
+  session: () => fetch('/api/session').then(r=>r.json()),
+  login:  (password) => SRV.j(fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})})),
+  logout: () => fetch('/api/logout',{method:'POST'}),
+  list:   () => SRV.j(fetch('/api/snapshots')),
+  get:    (id) => SRV.j(fetch('/api/snapshots/'+id)),
+  save:   (body) => SRV.j(fetch('/api/snapshots',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})),
+  del:    (id) => fetch('/api/snapshots/'+id,{method:'DELETE'}).then(r=>r.ok),
+};
+
+function localDate(d){ const x = new Date(d.getTime() - d.getTimezoneOffset()*60000); return x.toISOString().slice(0,10); }
+
+function serverRingkasan(){
+  if(!STATE) return {};
+  const { otoRows, bankRes, qris } = STATE;
+  const banks = {};
+  bankRes.forEach(r => {
+    if(r.noSource) return;
+    const s = bankStats(r);
+    banks[r.bank] = { kredit:s.kredit, kreditN:s.kreditN, cocokN:s.cocokN, salahN:s.salahN,
+      tidakN:s.tidakN, tidakSum:s.tidakSum, unN:s.unN, unSum:s.unSum, debN:s.debN, debSum:s.debSum };
+  });
+  return {
+    otoN: otoRows.length,
+    masuk: otoRows.filter(r=>r.arah==='masuk').reduce((s,r)=>s+r.jumlah,0),
+    admin: otoRows.filter(r=>r.arah==='biaya').reduce((s,r)=>s+r.jumlah,0),
+    banks,
+    qris: qris.noSource ? null : {
+      cocokN: qris.oto.filter(o=>o.status==='cocok').length,
+      selisihN: qris.oto.filter(o=>o.status==='selisih').length,
+      tidakN: qris.oto.filter(o=>o.status==='tidak_ada').length,
+      unN: qris.unmatched.length,
+    },
+  };
+}
+
+function afterAnalyse(){
+  const ok = SERVER_OK && !(AUTH.authRequired && !AUTH.authed) && !!STATE;
+  $('#saveBtn').hidden = !ok;
+  $('#resbar').hidden = true;
+  $('#saveBtn').classList.remove('on');
+  if(!ok) return;
+  const ds = STATE.otoRows.map(r=>r.d).filter(d=>!isNaN(d)).sort((a,b)=>a-b);
+  $('#saveDate').value = localDate(ds.length ? ds[0] : new Date());
+}
+{ const _analyse = analyse; analyse = function(src, persist){ _analyse(src, persist); afterAnalyse(); }; }
+
+function showLogin(){ $('#loginModal').hidden = false; setTimeout(()=>$('#loginPw').focus(), 30); }
+
+$('#loginForm').addEventListener('submit', async e => {
+  e.preventDefault(); $('#loginErr').textContent = '';
+  try{
+    await SRV.login($('#loginPw').value);
+    $('#loginModal').hidden = true; $('#loginPw').value = '';
+    AUTH.authed = true; $('#logoutBtn').hidden = false; $('#histBtn').hidden = false;
+    refreshHist(); afterAnalyse(); toast('Berhasil masuk');
+  }catch(err){ $('#loginErr').textContent = err.message; }
+});
+$('#logoutBtn').onclick = async () => { await SRV.logout(); location.reload(); };
+$('#histBtn').onclick = () => { const b = $('#histBox'); b.hidden = false; b.open = !b.open; if(b.open) refreshHist(); };
+$('#histRefresh').onclick = () => refreshHist();
+
+async function refreshHist(){
+  const box = $('#histList');
+  try{
+    const rows = await SRV.list();
+    $('#histMeta').textContent = rows.length + ' tersimpan';
+    box.innerHTML = '';
+    if(!rows.length){ box.innerHTML = '<div class="hist-empty">Belum ada riwayat.</div>'; return; }
+    rows.forEach(r => box.append(histRow(r)));
+  }catch(err){
+    if(/login/i.test(err.message)){ showLogin(); return; }
+    box.innerHTML = '<div class="hist-empty">Gagal memuat daftar.</div>';
+  }
+}
+
+function histRow(r){
+  const d = el('div','hist-row');
+  const s = r.ringkasan || {};
+  const bankBits = s.banks ? Object.entries(s.banks).map(([k,v]) => {
+    const n = (v.tidakN||0) + (v.unN||0); return k + ' ' + (n === 0 ? '✓' : 'cek ' + n);
+  }).join('  ·  ') : '';
+  const dt = new Date(r.tanggal + 'T00:00:00');
+  const tglTampil = isNaN(dt) ? r.tanggal : tglS(dt);
+  d.append(
+    Object.assign(el('span','hd'), { textContent: tglTampil, title: r.tanggal }),
+    Object.assign(el('span','hs'), { textContent:(s.otoN ? s.otoN + ' baris  ·  ' : '') + bankBits + '   ·   disimpan ' + String(r.dibuat_pada||'').replace('T',' ').slice(0,16) }),
+  );
+  const load = el('button','exp-btn','Muat'); load.onclick = () => loadSnapshot(r.id);
+  const del  = el('button','exp-btn','Hapus');
+  del.onclick = async () => { if(confirm('Hapus riwayat ' + r.tanggal + '?')){ await SRV.del(r.id); refreshHist(); } };
+  d.append(load, del);
+  if(r.catatan) d.append(Object.assign(el('div','hn'), { textContent:r.catatan }));
+  return d;
+}
+
+async function loadSnapshot(id){
+  try{
+    const snap = await SRV.get(id), s = snap.sumber || {};
+    $('#taOto').value = s.oto || ''; $('#taBri').value = s.bri || ''; $('#taBca').value = s.bca || '';
+    $('#taMdr').value = s.mdr || ''; $('#taQris').value = s.qris || '';
+    $('#histBox').open = false;
+    analyse(inputs(), false);
+    toast('Dimuat: ' + snap.tanggal);
+    window.scrollTo({ top:0, behavior:'smooth' });
+  }catch(err){ toast(err.message); }
+}
+
+$('#saveBtn').onclick = () => {
+  const show = $('#resbar').hidden;
+  $('#resbar').hidden = !show;
+  $('#saveBtn').classList.toggle('on', show);
+  if(show){ $('#saveMsg').textContent = ''; $('#saveNote').focus(); }
+};
+$('#saveCancel').onclick = () => { $('#resbar').hidden = true; $('#saveBtn').classList.remove('on'); };
+$('#saveGo').onclick = async () => {
+  if(!STATE) return;
+  $('#saveMsg').textContent = ''; $('#saveGo').disabled = true;
+  try{
+    const res = await SRV.save({ tanggal:$('#saveDate').value, catatan:$('#saveNote').value, sumber:inputs(), ringkasan:serverRingkasan() });
+    toast('Tersimpan ke server (' + res.tanggal + ')'); $('#saveNote').value = '';
+    $('#resbar').hidden = true; $('#saveBtn').classList.remove('on');
+    refreshHist();
+  }catch(err){
+    if(/login/i.test(err.message)) showLogin();
+    $('#saveMsg').textContent = err.message;
+  }finally{ $('#saveGo').disabled = false; }
+};
+
+async function initServer(){
+  if(!ONLINE) return;
+  try{
+    const s = await SRV.session();
+    if(!s || typeof s.authRequired !== 'boolean') return;   // bukan server kita (mis. dibuka sebagai artifact)
+    AUTH = s;
+  }catch{ return; }
+  SERVER_OK = true;
+  $('#histBtn').hidden = false;
+  if(AUTH.authRequired && !AUTH.authed){ showLogin(); return; }
+  $('#logoutBtn').hidden = !AUTH.authRequired;
+  refreshHist(); afterAnalyse();
+  const muat = new URLSearchParams(location.search).get('muat');
+  if(muat && /^\d+$/.test(muat)){
+    history.replaceState(null, '', location.pathname);
+    loadSnapshot(muat);
+  }
+}
+
+// Sinkronkan offset sticky tab-bar dengan tinggi header sebenarnya (berubah saat font termuat / resize).
+function syncStickyOffset(){
+  const h = document.querySelector('header'), t = document.querySelector('.tabs');
+  if(h && t) t.style.top = (h.getBoundingClientRect().height - 1) + 'px';
+}
+syncStickyOffset();
+addEventListener('resize', syncStickyOffset);
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(syncStickyOffset);
+
+(function boot(){
+  const savedOto = read(LS.oto);
+  if(savedOto){
+    $('#taOto').value = savedOto;
+    $('#taBri').value = read(LS.bri) || ''; $('#taBca').value = read(LS.bca) || '';
+    $('#taMdr').value = read(LS.mdr) || ''; $('#taQris').value = read(LS.qris) || '';
+    analyse(inputs(), false);
+  } else {
+    tampilanKosong();
+  }
+})();
+initServer();
+</script>

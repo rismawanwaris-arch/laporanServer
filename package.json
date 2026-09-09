@@ -1,0 +1,18 @@
+{
+  "name": "laporan-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Rekap Tartun — rekonsiliasi Otomax vs mutasi BCA/Mandiri/BRI, dengan riwayat tersimpan di SQLite.",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
