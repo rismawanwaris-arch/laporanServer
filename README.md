@@ -93,6 +93,11 @@ di-`PATCH` balik ke record itu, jadi daftar Import Data menampilkan angka final 
 kapan saja. Record hasil "pisah per tanggal" menyimpan `ringkasan.fokusTanggal` — analisanya
 otomatis menyaring baris Otomax & mutasi bank ke tanggal itu saja.
 
+## Blueprint desain
+
+`docs/blueprint.html` — dokumen desain sistem (arsitektur, model data, mesin rekonsiliasi,
+alur, keputusan & trade-off). Buka langsung di peramban.
+
 ## Catatan
 
 Logika rekonsiliasi di `public/index.html` identik dengan artifact "Rekap Tartun" dan

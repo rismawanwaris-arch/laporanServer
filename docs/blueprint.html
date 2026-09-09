@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blueprint Rekap Tartun</title>
+<meta name="description" content="Blueprint desain aplikasi rekonsiliasi harian Otomax × mutasi bank untuk usaha tarik tunai.">
+<style>img{max-width:100%}[hidden]{display:none!important}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Spectral:wght@500;600;700&display=swap">
+<style>
+:root{
+  --paper:#f5f3ed; --surface:#fffefb; --surface-2:#ece7db; --raise:#fbf9f3;
+  --ink:#1b2130; --ink-soft:#555c6e; --ink-faint:#8b8f9c;
+  --line:#dbd5c6; --line-soft:#e7e2d4;
+  --accent:#2b4a8b; --accent-deep:#1f3868; --accent-soft:#e3e9f5;
+  --good:#2f7d54; --good-soft:#e3efe7;
+  --warn:#8f6218; --warn-soft:#f5ecd8;
+  --crit:#a83e33; --crit-soft:#f5e2dd;
+  --grid:rgba(43,74,139,.055);
+  --shadow:0 1px 2px rgba(24,28,48,.05), 0 8px 24px rgba(24,28,48,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#12141b; --surface:#191c25; --surface-2:#242835; --raise:#1d212b;
+    --ink:#e7e9ef; --ink-soft:#a5aab9; --ink-faint:#727889;
+    --line:#2f333e; --line-soft:#272b34;
+    --accent:#89a8e6; --accent-deep:#adc4f0; --accent-soft:#212a3c;
+    --good:#5cba88; --good-soft:#18271f;
+    --warn:#d3a65e; --warn-soft:#2b2416;
+    --crit:#e37b70; --crit-soft:#2f1f1c;
+    --grid:rgba(137,168,230,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.28);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#12141b; --surface:#191c25; --surface-2:#242835; --raise:#1d212b;
+  --ink:#e7e9ef; --ink-soft:#a5aab9; --ink-faint:#727889;
+  --line:#2f333e; --line-soft:#272b34;
+  --accent:#89a8e6; --accent-deep:#adc4f0; --accent-soft:#212a3c;
+  --good:#5cba88; --good-soft:#18271f;
+  --warn:#d3a65e; --warn-soft:#2b2416;
+  --crit:#e37b70; --crit-soft:#2f1f1c;
+  --grid:rgba(137,168,230,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.28);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important} html{scroll-behavior:auto}}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.62; -webkit-font-smoothing:antialiased;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:28px 28px; background-position:-1px -1px;
+}
+h1,h2,h3,h4{font-family:"Spectral",Georgia,serif; font-weight:600; margin:0; letter-spacing:.005em; text-wrap:balance}
+code,kbd,.mono{font-family:"IBM Plex Mono","SF Mono",ui-monospace,monospace}
+a{color:var(--accent-deep); text-decoration-thickness:1px; text-underline-offset:2px}
+a:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:2px}
+
+/* ---- top bar ---- */
+.bar{position:sticky; top:0; z-index:20; background:var(--paper); border-bottom:1px solid var(--line)}
+.bar-in{max-width:1080px; margin:0 auto; padding:11px 24px; display:flex; align-items:baseline; gap:14px; flex-wrap:wrap}
+.bar b{font-family:"Spectral",serif; font-weight:700; font-size:15px}
+.bar .tag{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent-deep);
+  border:1px solid var(--line); border-radius:4px; padding:2px 7px}
+.bar .sp{flex:1}
+.bar .meta{font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--ink-faint)}
+@media(max-width:640px){ .bar .meta{display:none} }
+
+.wrap{max-width:1080px; margin:0 auto; padding:0 24px}
+
+/* ---- masthead ---- */
+header.mast{padding:64px 0 30px; border-bottom:2px solid var(--ink)}
+.mast .kick{font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--accent-deep); margin-bottom:14px}
+.mast h1{font-size:clamp(2.1rem,5vw,3.1rem); font-weight:700; line-height:1.08}
+.mast p.lede{margin:16px 0 0; max-width:56ch; font-size:1.05rem; color:var(--ink-soft)}
+.mast .facts{margin-top:26px; display:flex; flex-wrap:wrap; gap:8px 28px; font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-faint)}
+.mast .facts b{color:var(--ink-soft); font-weight:500}
+
+/* ---- table of contents ---- */
+nav.toc{margin:30px 0 8px; padding:20px 22px; background:var(--raise); border:1px solid var(--line); border-radius:8px}
+nav.toc h2{font-size:.8rem; font-family:"IBM Plex Mono",monospace; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint); font-weight:500; margin-bottom:12px}
+nav.toc ol{margin:0; padding:0; list-style:none; columns:2; column-gap:34px}
+@media(max-width:620px){ nav.toc ol{columns:1} }
+nav.toc li{break-inside:avoid; padding:3px 0; font-size:.92rem}
+nav.toc a{text-decoration:none; color:var(--ink-soft); display:flex; gap:10px}
+nav.toc a:hover{color:var(--accent-deep)}
+nav.toc .n{font-family:"IBM Plex Mono",monospace; color:var(--accent-deep); font-size:.82rem; flex:none; width:1.6rem}
+
+/* ---- sections ---- */
+section.s{padding:48px 0; border-bottom:1px solid var(--line-soft)}
+section.s:last-of-type{border-bottom:none}
+.s-head{display:grid; grid-template-columns:3.4rem 1fr; gap:0 4px; align-items:start; margin-bottom:8px}
+.s-head .num{font-family:"IBM Plex Mono",monospace; font-size:.85rem; color:var(--accent-deep); padding-top:.5rem}
+.s-head .eyebrow{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:5px}
+.s-head h2{font-size:1.6rem; font-weight:600; line-height:1.2}
+.s-body{max-width:70ch}
+.s-body.wide{max-width:none}
+.s-body p{margin:1em 0}
+.s-body>:first-child{margin-top:.4em}
+.s-body ul,.s-body ol{margin:1em 0; padding-left:1.3em}
+.s-body li{margin:.4em 0}
+.s-body li::marker{color:var(--accent)}
+.lead-in{font-size:1.05rem; color:var(--ink-soft)}
+strong{font-weight:600}
+.term{font-family:"IBM Plex Mono",monospace; font-size:.86em; background:var(--surface-2); border-radius:3px; padding:.08em .4em}
+
+/* ---- callout ---- */
+.note{margin:22px 0; padding:14px 16px 14px 18px; background:var(--accent-soft); border-left:3px solid var(--accent); border-radius:0 6px 6px 0; font-size:.95rem}
+.note.warn{background:var(--warn-soft); border-color:var(--warn)}
+.note b{font-family:"Spectral",serif}
+
+/* ---- figure ---- */
+figure{margin:26px 0; padding:22px; background:var(--surface); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow)}
+figure svg{display:block; width:100%; height:auto; color:var(--ink); overflow:visible}
+figcaption{margin-top:16px; font-size:.85rem; color:var(--ink-faint); font-family:"IBM Plex Mono",monospace; line-height:1.55}
+figcaption b{color:var(--ink-soft); font-weight:500}
+/* diagram theming — page CSS, not inside the svg */
+svg .box{fill:var(--surface-2); stroke:currentColor; stroke-width:1.2}
+svg .node{fill:var(--raise); stroke:currentColor; stroke-width:1}
+svg .hot{fill:var(--accent-soft); stroke:var(--accent); stroke-width:1.4}
+svg text{fill:currentColor; font-family:"IBM Plex Sans",sans-serif}
+svg .mono{font-family:"IBM Plex Mono",monospace}
+svg .t-hot{fill:var(--accent-deep)}
+svg .t-mut{fill:var(--ink-faint)}
+svg .edge{stroke:currentColor; stroke-width:1.4; fill:none}
+svg .edge-hot{stroke:var(--accent); stroke-width:1.6; fill:none}
+svg .edge-dash{stroke-dasharray:4 3}
+svg .arrowfill{fill:currentColor}
+
+/* ---- tables ---- */
+.tbl-scroll{margin:24px 0; overflow-x:auto; border:1px solid var(--line); border-radius:9px; background:var(--surface)}
+table{border-collapse:collapse; width:100%; font-size:.9rem}
+th,td{text-align:left; padding:10px 14px; border-bottom:1px solid var(--line-soft); vertical-align:top}
+thead th{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint); font-weight:500; background:var(--surface-2); white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+td.k{font-family:"IBM Plex Mono",monospace; font-size:.82rem; color:var(--accent-deep); white-space:nowrap}
+td code{font-size:.82em; background:var(--surface-2); padding:.06em .35em; border-radius:3px}
+.tbl-scroll table tbody tr:hover{background:var(--raise)}
+
+/* ---- pill / status ---- */
+.pill{display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:11px; padding:1px 7px; border-radius:20px; border:1px solid var(--line); white-space:nowrap; color:var(--ink-soft)}
+.pill.g{background:var(--good-soft); color:var(--good); border-color:var(--good)}
+.pill.w{background:var(--warn-soft); color:var(--warn); border-color:var(--warn)}
+.pill.c{background:var(--crit-soft); color:var(--crit); border-color:var(--crit)}
+
+/* ---- definition grid ---- */
+dl.defs{margin:22px 0; display:grid; grid-template-columns:minmax(9rem,14rem) 1fr; gap:0}
+dl.defs>div{display:contents}
+dl.defs dt{font-weight:600; font-family:"Spectral",serif; padding:12px 16px 12px 0; border-top:1px solid var(--line-soft)}
+dl.defs dd{margin:0; padding:12px 0; border-top:1px solid var(--line-soft); color:var(--ink-soft); font-size:.94rem}
+@media(max-width:600px){
+  dl.defs{grid-template-columns:1fr}
+  dl.defs dt{padding-bottom:2px; border-top:1px solid var(--line-soft)}
+  dl.defs dd{padding-top:4px; border-top:none}
+}
+
+/* ---- code block ---- */
+pre{margin:20px 0; padding:16px 18px; background:var(--surface); border:1px solid var(--line); border-radius:8px; overflow-x:auto;
+  font-family:"IBM Plex Mono",monospace; font-size:.82rem; line-height:1.7; color:var(--ink-soft)}
+pre .c{color:var(--ink-faint)}
+pre .a{color:var(--accent-deep)}
+
+footer{padding:40px 0 70px; font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-faint); line-height:1.7}
+footer .wrap>div{max-width:70ch}
+
+.hr-label{display:flex; align-items:center; gap:14px; margin:34px 0 6px}
+.hr-label span{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint)}
+.hr-label::after{content:""; flex:1; height:1px; background:var(--line)}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="bar-in">
+    <b>Rekap Tartun</b>
+    <span class="tag">Blueprint</span>
+    <span class="sp"></span>
+    <span class="meta">rismawanwaris-arch/laporanServer &nbsp;·&nbsp; rev. 2026-09-09</span>
+  </div>
+</div>
+
+<div class="wrap">
+<header class="mast">
+  <div class="kick">Blueprint Desain · Sistem Rekonsiliasi Harian</div>
+  <h1>Rekap Tartun</h1>
+  <p class="lede">Menyandingkan ekspor <strong>Otomax “Mutasi Reseller”</strong> dengan mutasi rekening BRI, BCA, Mandiri, dan settlement QRIS/BCA-Merchant — untuk usaha tarik tunai (“tartun”) CV Asya Bisnis Indonesia, ±46 outlet berkode <span class="mono">PLC</span> / <span class="mono">KBB</span>.</p>
+  <div class="facts">
+    <span><b>Stack</b> &nbsp;Node ≥ 22.5 · Express 4 · node:sqlite</span>
+    <span><b>Front-end</b> &nbsp;1 file, vanilla JS, tanpa bundler</span>
+    <span><b>Deploy</b> &nbsp;Docker / ZimaOS</span>
+    <span><b>Acuan</b> &nbsp;mutasi bank</span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Daftar isi">
+  <h2>Daftar isi</h2>
+  <ol>
+    <li><a href="#konteks"><span class="n">§1</span> Konteks &amp; tujuan</a></li>
+    <li><a href="#prinsip"><span class="n">§2</span> Prinsip desain</a></li>
+    <li><a href="#arsitektur"><span class="n">§3</span> Arsitektur sistem</a></li>
+    <li><a href="#alur"><span class="n">§4</span> Alur data</a></li>
+    <li><a href="#model"><span class="n">§5</span> Model data</a></li>
+    <li><a href="#mesin"><span class="n">§6</span> Mesin rekonsiliasi</a></li>
+    <li><a href="#tanggal"><span class="n">§7</span> Derivasi tanggal usaha</a></li>
+    <li><a href="#halaman"><span class="n">§8</span> Halaman &amp; navigasi</a></li>
+    <li><a href="#format"><span class="n">§9</span> Format sumber</a></li>
+    <li><a href="#api"><span class="n">§10</span> API</a></li>
+    <li><a href="#deploy"><span class="n">§11</span> Deploy &amp; konfigurasi</a></li>
+    <li><a href="#tradeoff"><span class="n">§12</span> Keputusan &amp; trade-off</a></li>
+    <li><a href="#terbuka"><span class="n">§13</span> Hal terbuka</a></li>
+  </ol>
+</nav>
+</div>
+
+<div class="wrap">
+
+<!-- ================= 1 ================= -->
+<section class="s" id="konteks">
+  <div class="s-head"><div class="num">§1</div><div><div class="eyebrow">Konteks</div><h2>Konteks &amp; tujuan</h2></div></div>
+  <div class="s-body">
+    <p class="lead-in">Setiap hari, operator di tiap outlet melayani tarik tunai: pelanggan transfer / gesek / bayar QRIS, operator memberi uang tunai. Otomax mencatat sisi “reseller”; bank mencatat sisi uang masuk. Keduanya <strong>harus</strong> ketemu.</p>
+    <p>Yang sering tidak sinkron: referensi transaksi ditulis beda antara bank dan Otomax; setoran dicatat generik (<span class="term">Auto Deposit BCA</span>) tanpa nomor referensi; transaksi QRIS di-<em>bulk</em> ke Otomax keesokan harinya; dan sebagian transaksi salah label bank.</p>
+    <p>Tugas aplikasi ini satu: <strong>ambil data seharian, tunjukkan mana yang cocok dan mana yang perlu dicek</strong> — dengan mutasi bank sebagai kebenaran, bukan Otomax.</p>
+    <div class="note">
+      <b>Pengguna:</b> operator pusat yang menutup buku harian. Bukan akuntan, bukan developer. Alur harus tahan salah-input dan jujur soal apa yang belum beres.
+    </div>
+  </div>
+</section>
+
+<!-- ================= 2 ================= -->
+<section class="s" id="prinsip">
+  <div class="s-head"><div class="num">§2</div><div><div class="eyebrow">Fondasi</div><h2>Prinsip desain</h2></div></div>
+  <div class="s-body">
+    <dl class="defs">
+      <div><dt>Mutasi bank = acuan</dt><dd>Setiap kredit di rekening adalah fakta. Otomax <em>meng-counter</em> mutasi bank, tidak sebaliknya. Semua angka dasbor dibingkai dari sisi bank: “uang masuk”, lalu “sudah / belum tercatat di Otomax”.</dd></div>
+      <div><dt>Parsing di peramban</dt><dd>Seluruh pembacaan file &amp; pencocokan berjalan <em>client-side</em>. Server hanya menyimpan. Data mentah tidak meninggalkan peramban sampai pengguna menekan simpan.</dd></div>
+      <div><dt>Database = sumber kebenaran</dt><dd>Sejak revisi DB-first: simpan data mentah ke DB dulu, semua analisa dijalankan <em>atas record</em>, dan hasilnya ditulis balik. Dasbor membaca ringkasan dari DB.</dd></div>
+      <div><dt>Degradasi anggun</dt><dd>Tanpa server (dibuka sebagai artifact / file lokal) aplikasi tetap jalan penuh — tombol jadi “Analisa data”, analisa langsung dari kotak, tanpa riwayat.</dd></div>
+      <div><dt>Satu tanggal, satu record</dt><dd>Impor multi-hari otomatis dipisah per <em>tanggal usaha</em>. Tiap record menganalisa baris Otomax &amp; mutasi bank tanggalnya sendiri.</dd></div>
+      <div><dt>Jujur soal ketidakpastian</dt><dd>Yang tidak bisa dicocokkan sistem tidak disembunyikan — masuk kolom “perlu dicek” / tab “Perlu perhatian”, lengkap dengan tombol audit manual untuk keputusan pengguna.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<!-- ================= 3 ================= -->
+<section class="s" id="arsitektur">
+  <div class="s-head"><div class="num">§3</div><div><div class="eyebrow">Arsitektur</div><h2>Arsitektur sistem</h2></div></div>
+  <div class="s-body wide">
+    <div class="s-body" style="max-width:70ch">
+      <p>Tiga bagian: peramban (semua logika), server Express tipis (hanya REST + berkas statis), dan satu file SQLite. Otentikasi opsional — satu password bersama, aktif hanya bila di-set.</p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 840 288" role="img" aria-label="Peramban menjalankan parsing dan rekonsiliasi; server Express hanya menyajikan UI dan REST; SQLite menyimpan snapshot. Hanya JSON snapshot yang melintasi jaringan.">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" class="arrowfill"/>
+          </marker>
+        </defs>
+        <rect class="box" x="16" y="28" width="300" height="234" rx="10"/>
+        <text class="mono" x="34" y="52" font-size="12" font-weight="600">PERAMBAN</text>
+        <rect class="node" x="36" y="66" width="262" height="38" rx="6"/>
+        <text x="48" y="90" font-size="12.5">parser xlsx / CSV BRI·BCA·Mandiri·QRIS</text>
+        <rect class="node" x="36" y="112" width="262" height="38" rx="6"/>
+        <text x="48" y="136" font-size="12.5">kategorisasi + tanggal usaha</text>
+        <rect class="hot" x="36" y="158" width="262" height="38" rx="6"/>
+        <text class="t-hot" x="48" y="182" font-size="12.5" font-weight="600">mesin rekonsiliasi</text>
+        <rect class="node" x="36" y="204" width="262" height="38" rx="6"/>
+        <text x="48" y="228" font-size="12.5">render dasbor / tab · localStorage</text>
+
+        <rect class="box" x="430" y="64" width="196" height="118" rx="10"/>
+        <text class="mono" x="448" y="88" font-size="12" font-weight="600">EXPRESS 4</text>
+        <text x="448" y="114" font-size="12.5">berkas statis public/</text>
+        <text x="448" y="136" font-size="12.5">REST /api/snapshots</text>
+        <text x="448" y="158" font-size="12.5">auth sesi (memori)</text>
+
+        <path class="box" d="M712 90 c0-11 96-11 96 0 v104 c0 11 -96 11 -96 0 z"/>
+        <path class="edge" d="M712 90 c0 11 96 11 96 0"/>
+        <text class="mono" x="760" y="146" text-anchor="middle" font-size="12" font-weight="600">SQLite</text>
+        <text x="760" y="165" text-anchor="middle" font-size="10.5">rekap.db</text>
+
+        <line class="edge" x1="316" y1="104" x2="428" y2="104" marker-end="url(#ah)"/>
+        <text class="mono" x="372" y="97" text-anchor="middle" font-size="10.5">GET /</text>
+        <line class="edge-hot" x1="428" y1="142" x2="318" y2="142" marker-end="url(#ah)"/>
+        <text class="mono t-hot" x="372" y="159" text-anchor="middle" font-size="10.5">JSON snapshot</text>
+        <line class="edge" x1="626" y1="130" x2="708" y2="130" marker-end="url(#ah)"/>
+        <line class="edge" x1="708" y1="150" x2="626" y2="150" marker-end="url(#ah)"/>
+      </svg>
+      <figcaption><b>Yang melintasi jaringan</b> hanyalah snapshot JSON (teks mentah + ringkasan angka), dan hanya saat pengguna menyimpan / menganalisa. File mentah tidak pernah di-upload sebagai file.</figcaption>
+    </figure>
+
+    <div class="s-body" style="max-width:70ch">
+      <ul>
+        <li><strong>Front-end</strong> — satu file <span class="term">public/index.html</span>: HTML + CSS + JS inline, tanpa framework/bundler. <span class="term">fflate</span> (dari jsDelivr) untuk membaca <span class="term">.xlsx</span> di peramban. Halaman <span class="term">/kelola</span> terpisah untuk manajemen DB.</li>
+        <li><strong>Server</strong> — <span class="term">server.js</span> (Express 4) + <span class="term">db.js</span>. Tanpa ORM. SQLite lewat modul bawaan <span class="term">node:sqlite</span> — tidak perlu <em>native build</em>, file DB kompatibel DB Browser.</li>
+        <li><strong>Auth</strong> — satu password bersama; token sesi disimpan di memori server (hilang saat restart — cukup untuk jaringan rumah). Password tersimpan di DB menang atas env <span class="term">APP_PASSWORD</span>.</li>
+        <li><strong>Shutdown</strong> — SIGINT/SIGTERM → <span class="term">PRAGMA wal_checkpoint(TRUNCATE)</span> + close, supaya file <span class="term">rekap.db</span> aman dibuka DB Browser.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 4 ================= -->
+<section class="s" id="alur">
+  <div class="s-head"><div class="num">§4</div><div><div class="eyebrow">Alur</div><h2>Alur data</h2></div></div>
+  <div class="s-body wide">
+    <div class="s-body" style="max-width:70ch">
+      <p>Sejak revisi <strong>DB-first</strong>, menyimpan dan menganalisa dipisah. “Simpan ke database” hanya menulis data mentah; rekonsiliasi dijalankan dari daftar record.</p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 860 316" role="img" aria-label="Alur: kotak input ke Simpan ke database, yang mem-parse Otomax, mengelompokkan per tanggal, dan menulis teks mentah plus ringkasan ringan. Impor multi-tanggal terpisah menjadi beberapa record ber-fokusTanggal. Dari daftar record, tombol Analisa menjalankan compute headless lalu PATCH ringkasan lengkap. Dashboard membaca ringkasan tiap record.">
+        <defs>
+          <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" class="arrowfill"/>
+          </marker>
+        </defs>
+        <rect class="box" x="14" y="116" width="146" height="84" rx="9"/>
+        <text x="87" y="146" text-anchor="middle" font-size="12.5">5 kotak input</text>
+        <text class="mono t-mut" x="87" y="165" text-anchor="middle" font-size="10">tempel / buka file</text>
+
+        <rect class="hot" x="228" y="98" width="168" height="120" rx="9"/>
+        <text class="t-hot" x="312" y="124" text-anchor="middle" font-size="12.5" font-weight="600">Simpan ke database</text>
+        <text class="t-hot" x="312" y="146" text-anchor="middle" font-size="11">parse Otomax</text>
+        <text class="t-hot" x="312" y="163" text-anchor="middle" font-size="11">kelompokkan / tanggal</text>
+        <text class="t-hot" x="312" y="180" text-anchor="middle" font-size="11">tulis raw + ringkasan</text>
+        <text class="t-hot" x="312" y="199" text-anchor="middle" font-size="10.5">ringan · belum dianalisa</text>
+
+        <rect class="node" x="464" y="66" width="150" height="46" rx="8"/>
+        <text class="mono" x="539" y="86" text-anchor="middle" font-size="11">record 31 Agu</text>
+        <text class="mono t-mut" x="539" y="101" text-anchor="middle" font-size="9.5">fokusTanggal</text>
+        <rect class="node" x="464" y="122" width="150" height="46" rx="8"/>
+        <text class="mono" x="539" y="149" text-anchor="middle" font-size="11">record 1 Sep</text>
+        <rect class="node" x="464" y="178" width="150" height="46" rx="8"/>
+        <text class="mono" x="539" y="205" text-anchor="middle" font-size="11">record 2 Sep</text>
+
+        <rect class="box" x="676" y="98" width="172" height="66" rx="9"/>
+        <text x="762" y="126" text-anchor="middle" font-size="12.5" font-weight="600">Analisa</text>
+        <text x="762" y="144" text-anchor="middle" font-size="10.5">compute headless</text>
+        <text x="762" y="158" text-anchor="middle" font-size="10.5">→ rekonsiliasi penuh</text>
+
+        <rect class="box" x="676" y="232" width="172" height="62" rx="9"/>
+        <text x="762" y="259" text-anchor="middle" font-size="12.5" font-weight="600">Dashboard</text>
+        <text x="762" y="277" text-anchor="middle" font-size="10.5">7 hari · baca ringkasan</text>
+
+        <line class="edge" x1="160" y1="158" x2="226" y2="158" marker-end="url(#ah2)"/>
+        <line class="edge" x1="396" y1="140" x2="462" y2="94" marker-end="url(#ah2)"/>
+        <line class="edge" x1="396" y1="156" x2="462" y2="150" marker-end="url(#ah2)"/>
+        <line class="edge" x1="396" y1="172" x2="462" y2="196" marker-end="url(#ah2)"/>
+        <text class="mono t-mut" x="430" y="126" text-anchor="middle" font-size="9.5">pisah</text>
+        <line class="edge" x1="614" y1="132" x2="674" y2="132" marker-end="url(#ah2)"/>
+        <path class="edge-hot" d="M762 164 L762 230" marker-end="url(#ah2)"/>
+        <text class="mono t-hot" x="772" y="201" font-size="10">PATCH ringkasan</text>
+        <path class="edge edge-dash" d="M676 262 C 632 262 632 150 616 150" marker-end="url(#ah2)"/>
+      </svg>
+      <figcaption><b>Garis solid</b> = aksi pengguna. <b>Garis biru</b> = tulis-balik hasil analisa ke record yang sama (bukan record baru). <b>Garis putus-putus</b> = dasbor membaca ringkasan tiap record. Impor 1 tanggal melewati langkah “pisah”.</figcaption>
+    </figure>
+
+    <div class="s-body" style="max-width:70ch">
+      <ol>
+        <li><strong>Impor</strong> — pengguna menempel / membuka 5 file, isi catatan opsional, tekan <em>Simpan ke database</em>.</li>
+        <li><strong>Deteksi tanggal</strong> — Otomax di-parse, dikelompokkan per tanggal usaha. Multi-tanggal → panel pilihan: <em>Pisah per tanggal</em> (default) atau <em>Gabung jadi 1 data</em>.</li>
+        <li><strong>Simpan</strong> — tiap record menyimpan seluruh teks mentah + <span class="term">ringkasan</span> ringan (kategori &amp; total per tanggal; belum ada pencocokan bank). Tanggal sama = ganti.</li>
+        <li><strong>Analisa</strong> — dari daftar / dasbor. Ambil record, jalankan rekonsiliasi penuh, <span class="term">PATCH</span> ringkasan lengkap balik ke record.</li>
+        <li><strong>Tinjau</strong> — dasbor (per tanggal) atau tab Rekonsiliasi (detail per bank). Ubah sandingan / keputusan audit → <em>Simpan hasil</em> mem-<span class="term">PATCH</span> record yang sama.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 5 ================= -->
+<section class="s" id="model">
+  <div class="s-head"><div class="num">§5</div><div><div class="eyebrow">Data</div><h2>Model data</h2></div></div>
+  <div class="s-body wide">
+    <div class="s-body" style="max-width:70ch"><p>Satu tabel inti. Teks mentah dan ringkasan angka disimpan sebagai JSON di kolom <span class="term">TEXT</span> — tidak dinormalisasi, karena satu record = satu hari dan selalu dibaca utuh.</p></div>
+
+    <div class="hr-label"><span>Tabel <code class="mono">snapshots</code></span></div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Kolom</th><th>Tipe</th><th>Isi</th></tr></thead>
+        <tbody>
+          <tr><td class="k">id</td><td>INTEGER PK</td><td>auto-increment</td></tr>
+          <tr><td class="k">tanggal</td><td>TEXT</td><td>tanggal usaha, <code>YYYY-MM-DD</code> · ada indeks <code>(tanggal DESC, id DESC)</code></td></tr>
+          <tr><td class="k">catatan</td><td>TEXT</td><td>catatan bebas, ≤ 500 char</td></tr>
+          <tr><td class="k">sumber</td><td>TEXT / JSON</td><td><code>{ oto, bri, bca, mdr, qris }</code> — teks mentah yang ditempel, apa adanya</td></tr>
+          <tr><td class="k">ringkasan</td><td>TEXT / JSON</td><td>ringkasan angka — bentuk <em>ringan</em> saat simpan, <em>lengkap</em> setelah Analisa (lihat bawah)</td></tr>
+          <tr><td class="k">dibuat_pada</td><td>TEXT</td><td><code>datetime('now')</code>; tidak berubah saat PATCH</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="s-body" style="max-width:70ch">Tabel kedua <span class="term">settings (k, v)</span> menyimpan satu baris: <span class="term">app_password</span>.</p>
+
+    <div class="hr-label"><span>Bentuk <code class="mono">ringkasan</code></span></div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Field</th><th>Ringan <span class="pill">saat simpan</span></th><th>Lengkap <span class="pill g">setelah analisa</span></th></tr></thead>
+        <tbody>
+          <tr><td class="k">dianalisa</td><td><code>false</code></td><td><code>true</code></td></tr>
+          <tr><td class="k">fokusTanggal</td><td colspan="2"><code>"YYYY-MM-DD"</code> untuk record hasil “pisah”, else <code>null</code> — analisa menyaring baris Otomax &amp; mutasi bank ke tanggal ini</td></tr>
+          <tr><td class="k">perTanggal[]</td><td colspan="2"><code>{ tgl, n, masuk, admin }</code> per tanggal usaha</td></tr>
+          <tr><td class="k">otoN · masuk · admin</td><td colspan="2">jumlah baris · total arah “masuk” · total potongan admin</td></tr>
+          <tr><td class="k">punyaBank</td><td><code>{ bri, bca, mdr, qris: bool }</code></td><td>—</td></tr>
+          <tr><td class="k">tarikTunai</td><td>—</td><td>total kategori “Tarik Tunai …”</td></tr>
+          <tr><td class="k">banks{BRI,BCA,MANDIRI}</td><td>—</td><td><code>{ kredit, kreditN, cocokN, salahN, tidakN, tidakSum, unN, unSum, debN, debSum }</code></td></tr>
+          <tr><td class="k">qris</td><td>—</td><td><code>{ cocokN, selisihN, tidakN, unN, masuk, unSum }</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="hr-label"><span><code class="mono">localStorage</code> (per-peramban)</span></div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Key</th><th>Isi</th><th>“Kosongkan”</th></tr></thead>
+        <tbody>
+          <tr><td class="k">rt-otomax · rt-bri · rt-bca<br>rt-mandiri · rt-qris</td><td>draft teks yang belum disimpan</td><td>dihapus (&amp; setelah simpan)</td></tr>
+          <tr><td class="k">rt-theme</td><td>light / dark / system</td><td><span class="pill g">bertahan</span></td></tr>
+          <tr><td class="k">rt-qris-map</td><td>Merchant ID → nama outlet Otomax</td><td><span class="pill g">bertahan</span></td></tr>
+          <tr><td class="k">rt-audit</td><td>keputusan audit manual — <code>{ key: 'cocok' | 'bukan' }</code></td><td><span class="pill g">bertahan</span></td></tr>
+          <tr><td class="k">rt-outlet-map</td><td>ID agen → nama outlet (mis. <code>PLC68 → PLC DM</code>); absen = pakai daftar bawaan 44 outlet</td><td><span class="pill g">bertahan</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note warn"><b>Konsekuensi:</b> keputusan audit &amp; sandingan outlet melekat ke satu peramban, tidak sinkron antar perangkat. Lihat <a href="#terbuka">§13</a>.</div>
+  </div>
+</section>
+
+<!-- ================= 6 ================= -->
+<section class="s" id="mesin">
+  <div class="s-head"><div class="num">§6</div><div><div class="eyebrow">Inti</div><h2>Mesin rekonsiliasi</h2></div></div>
+  <div class="s-body wide">
+    <div class="s-body" style="max-width:70ch">
+      <p>Per bank: kredit di mutasi rekening jadi tulang punggung. Baris Otomax berlabel <span class="term">TARTUN / BAYAR KE &lt;BANK&gt;</span> dicocokkan ke kredit lewat serangkaian <em>pass</em> yang makin longgar. Sisa di kedua sisi masuk tabel audit manual.</p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 840 360" role="img" aria-label="Pipeline rekonsiliasi per bank dengan kredit bank sebagai tulang punggung: pass 1 map persis referensi dan nominal, pass 2 reversal dan dobel, pass 3 fuzzy nominal plus token, pass 4 deposit per nominal atau kode outlet, pass 5 konfirmasi audit manual, pass 6 lintas-bank. Sisa tak tercocok di dua sisi masuk tabel audit yang mengumpankan balik ke pass 5.">
+        <defs>
+          <marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" class="arrowfill"/>
+          </marker>
+        </defs>
+        <rect class="hot" x="18" y="22" width="150" height="316" rx="9"/>
+        <text class="mono t-hot" x="93" y="46" text-anchor="middle" font-size="11" font-weight="600">KREDIT BANK</text>
+        <text class="t-hot" x="93" y="63" text-anchor="middle" font-size="10.5">acuan</text>
+        <text class="t-hot" x="93" y="326" text-anchor="middle" font-size="9.5">sisa → “belum tercatat”</text>
+
+        <g>
+          <rect class="box" x="222" y="24" width="356" height="42" rx="7" stroke-width="1"/>
+          <text x="238" y="42" font-size="12" font-weight="600">1 · map persis</text>
+          <text x="238" y="58" font-size="11">normRef | nominal → cocok</text>
+          <rect class="box" x="222" y="76" width="356" height="42" rx="7" stroke-width="1"/>
+          <text x="238" y="94" font-size="12" font-weight="600">2 · reversal &amp; dobel</text>
+          <text x="238" y="110" font-size="11">REV / negatif · pasangan REV → dobel</text>
+          <rect class="box" x="222" y="128" width="356" height="42" rx="7" stroke-width="1"/>
+          <text x="238" y="146" font-size="12" font-weight="600">3 · fuzzy</text>
+          <text x="238" y="162" font-size="11">nominal sama + token / substring → cocok_fuzzy</text>
+          <rect class="box" x="222" y="180" width="356" height="42" rx="7" stroke-width="1"/>
+          <text x="238" y="198" font-size="12" font-weight="600">4 · deposit</text>
+          <text x="238" y="214" font-size="11">“Deposit BCA” per nominal unik / kode outlet</text>
+          <rect class="box" x="222" y="232" width="356" height="42" rx="7" stroke-width="1"/>
+          <text x="238" y="250" font-size="12" font-weight="600">5 · audit manual</text>
+          <text x="238" y="266" font-size="11">tombol “Cocok” tersimpan (rt-audit) → cocok_manual</text>
+          <rect class="box" x="222" y="284" width="356" height="42" rx="7" stroke-width="1"/>
+          <text x="238" y="302" font-size="12" font-weight="600">6 · lintas-bank</text>
+          <text x="238" y="318" font-size="11">label bank salah, ketemu di bank lain → salah_bank</text>
+        </g>
+
+        <line class="edge" x1="168" y1="45" x2="220" y2="45" marker-end="url(#ah3)"/>
+        <line class="edge" x1="168" y1="97" x2="220" y2="97" marker-end="url(#ah3)"/>
+        <line class="edge" x1="168" y1="149" x2="220" y2="149" marker-end="url(#ah3)"/>
+        <line class="edge" x1="168" y1="201" x2="220" y2="201" marker-end="url(#ah3)"/>
+        <line class="edge" x1="168" y1="253" x2="220" y2="253" marker-end="url(#ah3)"/>
+        <line class="edge" x1="168" y1="305" x2="220" y2="305" marker-end="url(#ah3)"/>
+
+        <rect class="node" x="626" y="150" width="200" height="92" rx="9" stroke-dasharray="4 3"/>
+        <text x="726" y="176" text-anchor="middle" font-size="12" font-weight="600">Tabel audit manual</text>
+        <text x="726" y="196" text-anchor="middle" font-size="10.5">sisa bank ↔ sisa Otomax</text>
+        <text x="726" y="212" text-anchor="middle" font-size="10.5">disandingkan per nominal</text>
+        <text x="726" y="228" text-anchor="middle" font-size="10.5">tombol Cocok / Bukan</text>
+        <path class="edge" d="M578 201 C 600 201 604 196 624 196" marker-end="url(#ah3)"/>
+        <path class="edge-hot edge-dash" d="M726 150 C 726 92 640 253 580 253" marker-end="url(#ah3)"/>
+        <text class="mono t-hot" x="612" y="328" font-size="9.5">umpan balik ke pass 5</text>
+      </svg>
+      <figcaption><b>Urutan tetap</b> — tiap pass hanya menyentuh baris yang masih <span class="mono">pending</span>. Pass QRIS berjalan terpisah (lihat bawah). Menekan <b>Cocok</b> di tabel audit menulis <span class="mono">rt-audit</span>; analisa berikutnya memungutnya di pass 5.</figcaption>
+    </figure>
+
+    <div class="hr-label"><span>Kosakata status</span></div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Status</th><th>Arti</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill g">cocok</span></td><td>referensi + nominal persis</td></tr>
+          <tr><td><span class="pill g">cocok_fuzzy</span></td><td>nominal sama, referensi diformat ulang (BCA/Mandiri) — cocok via token / substring</td></tr>
+          <tr><td><span class="pill g">cocok_deposit</span></td><td>setoran generik (“Auto Deposit BCA”) disandingkan per nominal unik atau kode outlet</td></tr>
+          <tr><td><span class="pill g">cocok_manual</span></td><td>pengguna menekan “Cocok” di tabel audit</td></tr>
+          <tr><td><span class="pill w">salah_bank</span></td><td>Otomax melabeli bank keliru; bank sebenarnya teridentifikasi di pass lintas-bank</td></tr>
+          <tr><td><span class="pill w">dobel</span></td><td>duplikat yang sudah ada REV-nya</td></tr>
+          <tr><td><span class="pill">reversal</span></td><td>baris REV / bernilai negatif</td></tr>
+          <tr><td><span class="pill c">tidak_ada</span></td><td>tak ada pasangan. Sisi bank: “belum tercatat di Otomax”. Sisi Otomax: “tanpa bukti mutasi”</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="hr-label"><span>QRIS / BCA-Merchant</span></div>
+    <div class="s-body" style="max-width:70ch">
+      <p>Baris Otomax <span class="term">TARTUN QR BULK</span> disandingkan ke agregat merchant (per Merchant ID) dengan prioritas: <strong>sandingan tersimpan</strong> (<span class="term">rt-qris-map</span>) → nama outlet persis → nominal unik → nama mirip &amp; tunggal. Nama merchant beda dari nama outlet Otomax (mis. <span class="term">ALFA 1 CELL</span> vs <span class="term">PLC ALFA1 PASIR IMPUN</span>) — sisa disandingkan manual lewat <span class="term">&lt;select&gt;</span>, disimpan per Merchant ID.</p>
+    </div>
+
+    <div class="hr-label"><span>Konsolidasi nama outlet</span></div>
+    <div class="s-body" style="max-width:70ch">
+      <p>Mutasi BCA menyebut kode (<span class="term">… Tartun PLC68 …</span>); Otomax mencatat deposit-nya hanya dengan nama di kolom reseller (<span class="term">PLC DM</span>). Peta <span class="term">ID agen → nama outlet</span> (<span class="term">rt-outlet-map</span>, seed 44 outlet, dapat ditempel-ganti di Pengaturan) menyatukan keduanya di pass deposit &amp; di tabel audit.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 7 ================= -->
+<section class="s" id="tanggal">
+  <div class="s-head"><div class="num">§7</div><div><div class="eyebrow">Aturan</div><h2>Derivasi tanggal usaha</h2></div></div>
+  <div class="s-body">
+    <p>Jam entri Otomax <strong>bukan</strong> tanggal transaksi. Baris QR bulk &amp; admin dientri keesokan harinya tapi keterangannya memuat tanggal aslinya.</p>
+    <p><span class="term">tanggalUsaha(r)</span> untuk tiap baris:</p>
+    <ol>
+      <li>Cari <span class="term">TGL DD-BLN-YYYY</span> di keterangan (mis. <span class="term">TARTUN QR BULK TGL 31-AGS-2026</span>). Ketemu → itu tanggalnya.</li>
+      <li>Tidak ketemu → pakai tanggal dari <em>timestamp</em> baris.</li>
+    </ol>
+    <p>Peta bulan menerima ejaan Indonesia &amp; Inggris: <span class="mono">JAN FEB MAR APR MEI/MAY JUN JUL AGU/AGS/AUG SEP OKT/OCT NOV/NOP DES/DEC</span>. <span class="term">tanggalDataOtomatis(rows)</span> = modus dari semua tanggal usaha → jadi tanggal record saat “gabung”; saat “pisah”, tiap tanggal unik jadi record sendiri.</p>
+    <div class="note"><b>Contoh nyata:</b> satu ekspor <span class="term">OTOMAX.xlsx</span> terbaca sebagai 46 baris → 31 Agu, 45 → 1 Sep, 553 → 2 Sep — meski semuanya dientri sekitar 2 Sep.</div>
+  </div>
+</section>
+
+<!-- ================= 8 ================= -->
+<section class="s" id="halaman">
+  <div class="s-head"><div class="num">§8</div><div><div class="eyebrow">UI</div><h2>Halaman &amp; navigasi</h2></div></div>
+  <div class="s-body wide">
+    <div class="s-body" style="max-width:70ch"><p>Satu halaman, menu bar di header: <strong>Dashboard · Import Data · Rekonsiliasi · Pengaturan</strong> + pemilih tanggal + toggle tema. Menu Dashboard tampil hanya bila ada server + login.</p></div>
+    <dl class="defs">
+      <div><dt>Dashboard</dt><dd>Halaman pertama. Tabel 7 hari (di-anchor ke data terbaru): <em>Tanggal · Uang masuk (bank) · Otomax · Selisih · Perlu dicek</em> + baris total. Tombol “Analisa N hari” menghitung semua record yang belum dianalisa; klik baris → analisa lengkap.</dd></div>
+      <div><dt>Import Data</dt><dd>5 kotak (Otomax + BRI/BCA/Mandiri/QRIS), tombol 📁 buka file per kotak, <em>Simpan ke database</em>, panel pisah/gabung untuk multi-tanggal. Di bawah: daftar <em>Data tersimpan</em> — tiap record punya tombol Analisa / Hapus.</dd></div>
+      <div><dt>Rekonsiliasi</dt><dd>Kartu angka + tab: <span class="pill">Perlu perhatian</span> (default) · Ringkasan · Rekonsiliasi (sub-nav per bank + tabel audit) · Kategori (termasuk rekap per tanggal) · Per outlet. Banner “fokus tanggal” untuk record hasil pisah. Tombol <em>Simpan hasil</em> mem-PATCH record.</dd></div>
+      <div><dt>Pengaturan</dt><dd>Tema (terang/gelap/sistem) · sandingan merchant↔outlet · konsolidasi nama outlet · keputusan audit manual · akun (login / ganti password) · link Kelola DB · hapus data lokal.</dd></div>
+      <div><dt>/kelola</dt><dd>Halaman terpisah: tabel semua snapshot, edit tanggal/catatan inline, lihat teks mentah, hapus satu / semua, info ukuran DB.</dd></div>
+    </dl>
+    <div class="note">
+      <b>Desain informasi dasbor:</b> selisih ≠ 0 dan “perlu dicek” &gt; 0 dirender merah (semantik, bukan aksen). Hari tanpa data tampil redup. Ini alat yang dipindai, bukan dokumen yang dibaca.
+    </div>
+  </div>
+</section>
+
+<!-- ================= 9 ================= -->
+<section class="s" id="format">
+  <div class="s-head"><div class="num">§9</div><div><div class="eyebrow">Input</div><h2>Format sumber</h2></div></div>
+  <div class="s-body wide">
+    <div class="s-body" style="max-width:70ch"><p>Deteksi otomatis dari tanda tangan header. Tiap kotak menerima file resmi <em>atau</em> tempelan manual format lama.</p></div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Sumber</th><th>Format utama</th><th>Kunci parsing</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Otomax</td><td><code>.xlsx</code> ekspor (dibaca via fflate) atau TSV</td><td>kolom <code>Tanggal · Nama Reseller · Jumlah · Keterangan</code></td></tr>
+          <tr><td class="k">BRI</td><td>CSV resmi</td><td><code>TRREMK</code> sebagai referensi; <code>REMARK_CUSTOM</code> untuk baris BRILink / BRImo P2P</td></tr>
+          <tr><td class="k">BCA</td><td>CSV “Informasi Rekening”</td><td><code>Tanggal Transaksi, Keterangan, Cabang, Jumlah, Saldo</code> · <code>CR/DB</code></td></tr>
+          <tr><td class="k">Mandiri</td><td>CSV titik-koma</td><td><code>Remarks</code> + <code>Credit / Debit Amount</code></td></tr>
+          <tr><td class="k">QRIS (slot 5)</td><td>CSV rekening penampung <em>atau</em> settlement BCA-Merchant</td><td>baris <code>KR OTOMATIS MID : …</code> diagregat per MID (nilai <b>bruto</b>); atau <code>Merchant · ID · Freq · Amount</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note warn"><b>Duplikasi:</b> logika kategori/parsing/pencocokan ada di <strong>4 salinan</strong> — <code>LaporanServer/public/index.html</code>, artifact “Rekap Tartun”, <code>Downloads/Rekap Tartun.html</code>, <code>rekap-tartun/public/rekon.html</code>. Setiap perubahan aturan harus disamakan.</div>
+  </div>
+</section>
+
+<!-- ================= 10 ================= -->
+<section class="s" id="api">
+  <div class="s-head"><div class="num">§10</div><div><div class="eyebrow">Kontrak</div><h2>API</h2></div></div>
+  <div class="s-body wide">
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Method + path</th><th>Fungsi</th></tr></thead>
+        <tbody>
+          <tr><td class="k">GET /api/session</td><td><code>{ authRequired, authed }</code></td></tr>
+          <tr><td class="k">POST /api/login</td><td><code>{ password }</code> → cookie <code>sid</code> (HttpOnly, 30 hari)</td></tr>
+          <tr><td class="k">POST /api/logout</td><td>hapus sesi</td></tr>
+          <tr><td class="k">POST /api/password</td><td><code>{ current?, baru }</code> — set / ganti (min 4 char); simpan ke DB, batalkan semua sesi</td></tr>
+          <tr><td class="k">GET /api/db/info</td><td>jumlah baris, ukuran file (+ wal/shm), rentang tanggal</td></tr>
+          <tr><td class="k">GET /api/snapshots</td><td>daftar (<code>?limit=</code> atau <code>?full=1</code>)</td></tr>
+          <tr><td class="k">POST /api/snapshots</td><td><code>{ tanggal, catatan, sumber, ringkasan }</code> → simpan</td></tr>
+          <tr><td class="k">GET /api/snapshots/:id</td><td>satu record termasuk <code>sumber</code></td></tr>
+          <tr><td class="k">PATCH /api/snapshots/:id</td><td><code>{ tanggal?, catatan?, ringkasan? }</code> — dipakai menyimpan hasil analisa</td></tr>
+          <tr><td class="k">DELETE /api/snapshots/:id</td><td>hapus satu</td></tr>
+          <tr><td class="k">POST /api/snapshots/hapus-semua</td><td><code>{ konfirmasi: "HAPUS SEMUA" }</code> + VACUUM</td></tr>
+          <tr><td class="k">GET /healthz</td><td><code>ok</code> — health check Docker</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="s-body" style="max-width:70ch">Semua <code class="mono">/api/*</code> kecuali <code>session</code> / <code>login</code> lewat <span class="term">requireAuth</span> bila auth aktif. Body JSON dibatasi 8 MB.</p>
+  </div>
+</section>
+
+<!-- ================= 11 ================= -->
+<section class="s" id="deploy">
+  <div class="s-head"><div class="num">§11</div><div><div class="eyebrow">Operasi</div><h2>Deploy &amp; konfigurasi</h2></div></div>
+  <div class="s-body wide">
+    <div class="s-body" style="max-width:70ch"><p>Target: ZimaOS via Docker Compose, DB pada bind-mount <code>./data</code>. Update = <code class="mono">git pull &amp;&amp; docker compose up -d --build</code>.</p></div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Env</th><th>Default</th><th>Keterangan</th></tr></thead>
+        <tbody>
+          <tr><td class="k">PORT</td><td>3000</td><td>port HTTP dalam kontainer</td></tr>
+          <tr><td class="k">DATA_DIR</td><td>./data</td><td>lokasi <code>rekap.db</code></td></tr>
+          <tr><td class="k">APP_PASSWORD</td><td><em>(kosong)</em></td><td>kosong = tanpa login; diisi = minta password bersama</td></tr>
+          <tr><td class="k">HOST_PORT</td><td>3000</td><td>port sisi host (compose) — ganti kalau 3000 dipakai</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <pre><span class="c"># .env (opsional)</span>
+HOST_PORT=<span class="a">3100</span>
+APP_PASSWORD=<span class="a">rahasia123</span>
+
+docker compose up -d --build   <span class="c"># buka http://&lt;ip-host&gt;:$HOST_PORT</span></pre>
+    <p class="s-body" style="max-width:70ch">Image <span class="term">node:24-alpine</span>. <span class="term">npm install --omit=dev</span> (satu dependency: express). <span class="term">VOLUME /app/data</span>. Restart <span class="term">unless-stopped</span>.</p>
+  </div>
+</section>
+
+<!-- ================= 12 ================= -->
+<section class="s" id="tradeoff">
+  <div class="s-head"><div class="num">§12</div><div><div class="eyebrow">Rasional</div><h2>Keputusan &amp; trade-off</h2></div></div>
+  <div class="s-body">
+    <dl class="defs">
+      <div><dt>Parsing client-side</dt><dd><b>+</b> privasi, nol beban CPU server, jalan sebagai artifact offline. &nbsp;<b>−</b> mesin terduplikasi di 4 tempat.</dd></div>
+      <div><dt>node:sqlite bawaan</dt><dd><b>+</b> tanpa native build, satu file, kompatibel DB Browser. &nbsp;<b>−</b> wajib Node ≥ 22.5.</dd></div>
+      <div><dt>Sesi di memori</dt><dd><b>+</b> sederhana, cukup untuk LAN rumah. &nbsp;<b>−</b> logout saat server restart.</dd></div>
+      <div><dt>DB-first (simpan → analisa)</dt><dd><b>+</b> DB jadi sumber kebenaran, dasbor cepat baca ringkasan, data mentah aman lebih dulu. &nbsp;<b>−</b> analisa perlu satu klik; re-analisa menulis balik.</dd></div>
+      <div><dt>Bingkai bank-first</dt><dd><b>+</b> sesuai realita (uang bank = fakta), mengarahkan perhatian ke selisih. &nbsp;<b>−</b> semua label UI harus konsisten “dari sisi bank”.</dd></div>
+      <div><dt>Pisah-per-tanggal default</dt><dd><b>+</b> tiap hari jadi record mandiri, dasbor bersih. &nbsp;<b>−</b> lag QR bulk yang melintasi batas tanggal tidak terekonsiliasi — pakai “gabung”.</dd></div>
+      <div><dt>Audit &amp; outlet-map di localStorage</dt><dd><b>+</b> tanpa skema tambahan, instan. &nbsp;<b>−</b> per-peramban, tidak lintas perangkat.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<!-- ================= 13 ================= -->
+<section class="s" id="terbuka">
+  <div class="s-head"><div class="num">§13</div><div><div class="eyebrow">Backlog</div><h2>Hal terbuka</h2></div></div>
+  <div class="s-body">
+    <ul>
+      <li>Settlement BCA-Merchant (format tanpa tanggal) tidak bisa disaring per tanggal untuk record hasil “pisah”.</li>
+      <li>Keputusan audit &amp; peta outlet per-peramban — kandidat pindah ke DB (<span class="term">settings</span> atau tabel baru) supaya lintas perangkat.</li>
+      <li>Alur “pisah” menyimpan blob mentah utuh di tiap record lalu menyaring saat analisa — belum ada upload mutasi bank per-tanggal.</li>
+      <li>4 salinan mesin rekonsiliasi harus disamakan manual setiap kali aturan berubah.</li>
+      <li>Tanpa undo per-baris untuk “Cocok” yang sudah dikonfirmasi (hanya reset menyeluruh / tombol “Bukan”).</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <div>
+      Blueprint ini menggambarkan keadaan sistem per <b>2026-09-09</b> (commit <span class="mono">e76747a</span>).
+      Kode sumber: <span class="mono">github.com/rismawanwaris-arch/laporanServer</span> ·
+      artifact “Rekap Tartun” untuk versi standalone.
+      Bila aturan kategori / pencocokan berubah, perbarui §6 dan §9, dan samakan keempat salinan mesin.
+    </div>
+  </div>
+</footer>
+</body>
+</html>
