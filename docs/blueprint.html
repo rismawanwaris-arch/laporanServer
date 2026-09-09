@@ -563,7 +563,7 @@ footer .wrap>div{max-width:70ch}
           <tr><td class="k">BRI</td><td>CSV resmi</td><td><code>TRREMK</code> sebagai referensi; <code>REMARK_CUSTOM</code> untuk baris BRILink / BRImo P2P</td></tr>
           <tr><td class="k">BCA</td><td>CSV “Informasi Rekening”</td><td><code>Tanggal Transaksi, Keterangan, Cabang, Jumlah, Saldo</code> · <code>CR/DB</code></td></tr>
           <tr><td class="k">Mandiri</td><td>CSV titik-koma</td><td><code>Remarks</code> + <code>Credit / Debit Amount</code></td></tr>
-          <tr><td class="k">QRIS (slot 5)</td><td>CSV rekening penampung <em>atau</em> settlement BCA-Merchant</td><td>baris <code>KR OTOMATIS MID : …</code> diagregat per MID (nilai <b>bruto</b>); atau <code>Merchant · ID · Freq · Amount</code></td></tr>
+          <tr><td class="k">QRIS (slot 5)</td><td><code>ReportMerchantBCA_*.xlsx</code> (ambil <b>hanya lembar SUMMARY</b>), CSV rekening penampung, <em>atau</em> tempel agregat</td><td>SUMMARY: <code>Merchant · ID · Freq · Amount</code> (nilai <b>bruto</b>); CSV: <code>KR OTOMATIS MID : …</code> diagregat per MID</td></tr>
         </tbody>
       </table>
     </div>

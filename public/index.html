@@ -288,7 +288,7 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
       <div class="field sm">
         <label for="taQris">5 · QRIS BCA <span class="opt">— settlement, opsional</span></label>
         <button type="button" class="filepick" data-t="taQris">📁 Buka file</button>
-        <textarea id="taQris" spellcheck="false" placeholder="Buka file CSV mutasi rekening QRIS BCA (baris 'KR OTOMATIS MID : …') — atau settlement BCA Merchant (Merchant Name · ID · Freq · Amount). Dicocokkan per outlet dengan TARTUN QR BULK."></textarea>
+        <textarea id="taQris" spellcheck="false" placeholder="Buka file ReportMerchantBCA_*.xlsx (otomatis ambil lembar SUMMARY) — atau CSV mutasi rekening QRIS BCA ('KR OTOMATIS MID : …'). Dicocokkan per outlet dengan TARTUN QR BULK."></textarea>
       </div>
     </div>
     <input type="file" id="filePick" accept=".csv,.xlsx,.txt,.tsv,text/csv" hidden>
@@ -785,28 +785,36 @@ function crossBank(results){
 }
 
 // BCA Merchant — settlement QRIS agregat: Merchant Name / Merchant ID / Total Frequency / Total Amount
-function parseBcaMerchant(text){
+// Tanggal laporan dari header "Report Merchant BCA" (mis. "Thursday, 03 September 2026").
+function bcaMerchantTanggal(text){
+  const m = String(text).match(/\b(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})\b/);
+  if(!m) return null;
+  const mo = BLN3[m[2].slice(0, 3).toUpperCase()];
+  return mo == null ? null : localDate(new Date(+m[3], mo, +m[1]));
+}
+// Settlement QRIS BCA agregat — lembar SUMMARY: Merchant Name · Merchant ID · Total Frequency · Total Amount.
+// fokusISO: kalau tanggal laporan beda dari tanggal record ("pisah"), abaikan file ini.
+function parseBcaMerchant(text, fokusISO){
+  if(fokusISO){ const t = bcaMerchantTanggal(text); if(t && t !== fokusISO) return []; }
   const rows = [];
   for(const line of text.split(/\r?\n/)){
     if(!line.trim()) continue;
     const p = line.split('\t');
     if(p.length < 4) continue;
-    if(/merchant\s*name/i.test(p[0]) || /merchant\s*id/i.test(p[1] || '')) continue;
-    const amt = parseInt(String(p[3]).replace(/[^\d]/g, ''), 10);
-    if(!amt) continue;
-    rows.push({
-      merchant: p[0].trim().replace(/\s+/g, ' '),
-      mid: String(p[1]).trim().replace(/\s+/g, ''),
-      freq: parseInt(String(p[2]).replace(/[^\d]/g, ''), 10) || 0,
-      amount: amt,
-    });
+    const name = (p[0] || '').trim().replace(/\s+/g, ' ');
+    const mid = (p[1] || '').trim().replace(/\s+/g, '');
+    if(!name || !/^\d{6,}$/.test(mid)) continue;                       // baris data = nama + Merchant ID
+    const amount = Math.round(parseFloat(String(p[3]).replace(/,/g, '').replace(/[^\d.]/g, '')) || 0);
+    if(!amount) continue;
+    rows.push({ merchant: name, mid, freq: parseInt(String(p[2]).replace(/[^\d]/g, ''), 10) || 0, amount });
   }
   return rows;
 }
 function isBcaMerchant(text){
-  const first = (text.split(/\r?\n/).find(l => l.trim()) || '');
-  return /merchant\s*name\s*\t/i.test(first) || /\tmerchant\s*id\b/i.test(first)
-      || /^[^\t]+\t0*\d{6,}\t\d+\t\s*Rp/i.test(first);
+  if(/transaction report by merchant/i.test(text)) return true;
+  const lines = text.split(/\r?\n/);
+  if(lines.some(l => /merchant\s*name/i.test(l) && /merchant\s*id/i.test(l) && /total\s*amount/i.test(l))) return true;
+  return lines.some(l => /^[^\t]+\t0*\d{6,}\t\d+\t\s*(rp)?[\d.,]+/i.test(l));
 }
 
 const qStrip = s => norm(s).replace(/\b(PLC|KBB|CELL|CABANG|OUTLET|QR)\b/g, '').replace(/[^A-Z0-9]/g, '');
@@ -988,7 +996,7 @@ function computeAnalysis(src, fokus){
   let qrisRows = null;
   if((src.qris||'').trim()){
     if(isBcaQrisCsv(src.qris))      qrisRows = { mode:'merchant', rows: parseBcaQrisCsv(src.qris, fokus) };
-    else if(isBcaMerchant(src.qris)) qrisRows = { mode:'merchant', rows: parseBcaMerchant(src.qris) };
+    else if(isBcaMerchant(src.qris)) qrisRows = { mode:'merchant', rows: parseBcaMerchant(src.qris, fokus) };
     else                             qrisRows = { mode:'otomax',   rows: parseOtomax(src.qris) };
   }
   const bankRes = BANKS.map(b => reconcileBank(b, otoRows, parsed[b]));
@@ -1825,7 +1833,9 @@ $('#clearData').onclick = () => {
 
 /* ---------- buka file (CSV / XLSX) ---------- */
 function unesc(s){ return String(s).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#10;/g,'\n').replace(/&#13;/g,'\r').replace(/&apos;/g,"'").replace(/&amp;/g,'&'); }
-function xlsxToTsv(buf){
+// opts.sheet = wajib pakai sheet bernama ini · opts.preferSheet = pakai kalau ada, else sheet pertama
+function xlsxToTsv(buf, opts){
+  opts = opts || {};
   if(typeof fflate === 'undefined') throw new Error('Pustaka baca XLSX belum termuat — cek koneksi, atau simpan file sebagai CSV.');
   const files = fflate.unzipSync(new Uint8Array(buf));
   const dec = new TextDecoder();
@@ -1836,9 +1846,25 @@ function xlsxToTsv(buf){
     for(const m of ss.matchAll(/<si>([\s\S]*?)<\/si>/g))
       strings.push([...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map(x => unesc(x[1])).join(''));
   }
-  // ambil sheet pertama
-  const sheetName = Object.keys(files).find(k => /^xl\/worksheets\/sheet1\.xml$/.test(k)) || Object.keys(files).find(k => /^xl\/worksheets\/.*\.xml$/.test(k));
-  const sheet = dec.decode(files[sheetName]);
+  // resolusi sheet: nama → r:id (workbook.xml) → file (workbook.xml.rels)
+  let sheetKey = null;
+  const want = String(opts.sheet || opts.preferSheet || '').toLowerCase();
+  if(want && files['xl/workbook.xml'] && files['xl/_rels/workbook.xml.rels']){
+    const wb = dec.decode(files['xl/workbook.xml']), rel = dec.decode(files['xl/_rels/workbook.xml.rels']);
+    const relMap = {};
+    for(const m of rel.matchAll(/<Relationship\b[^>]*\bId="([^"]+)"[^>]*\bTarget="([^"]+)"/g)) relMap[m[1]] = m[2];
+    for(const m of wb.matchAll(/<sheet\b[^>]*\bname="([^"]*)"[^>]*\br:id="([^"]+)"/g)){
+      if(unesc(m[1]).toLowerCase() === want){
+        let t = relMap[m[2]] || '';
+        t = t.replace(/^\//, '').replace(/^xl\//, '');
+        if(files['xl/' + t]) sheetKey = 'xl/' + t;
+        break;
+      }
+    }
+    if(!sheetKey && opts.sheet) throw new Error('Sheet "' + opts.sheet + '" tidak ditemukan di file.');
+  }
+  if(!sheetKey) sheetKey = Object.keys(files).find(k => /^xl\/worksheets\/sheet1\.xml$/.test(k)) || Object.keys(files).find(k => /^xl\/worksheets\/.*\.xml$/.test(k));
+  const sheet = dec.decode(files[sheetKey]);
   const rows = {};
   for(const cm of sheet.matchAll(/<c r="([A-Z]+)(\d+)"(?:[^>]*?t="([^"]*)")?[^>]*>(?:<v>([\s\S]*?)<\/v>|<is><t[^>]*>([\s\S]*?)<\/t><\/is>)?<\/c>/g)){
     const col = cm[1], row = +cm[2], type = cm[3], v = cm[4], inl = cm[5];
@@ -1863,7 +1889,9 @@ $('#filePick').onchange = async e => {
   if(!f || !target) return;
   try{
     if(/\.xlsx$/i.test(f.name)){
-      $('#' + target).value = xlsxToTsv(await f.arrayBuffer());
+      // Report Merchant BCA = workbook multi-sheet; yang dipakai hanya lembar SUMMARY.
+      const opts = target === 'taQris' ? { preferSheet:'SUMMARY' } : {};
+      $('#' + target).value = xlsxToTsv(await f.arrayBuffer(), opts);
     } else {
       $('#' + target).value = await f.text();
     }

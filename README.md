@@ -13,7 +13,7 @@ Tiap kotak punya tombol **📁 Buka file** (atau tempel manual).
 | **BRI** | CSV ekspor resmi (`ID,NOREK,TGL_TRAN,…,TRREMK,…,REMARK_CUSTOM`) — atau tempel format BRImo (3 baris/transaksi) |
 | **BCA** | CSV ekspor "Informasi Rekening" (`Tanggal Transaksi,Keterangan,Cabang,Jumlah,Saldo`) — atau tempel e-statement |
 | **Mandiri** | CSV ekspor titik-koma (`AccountNo;Ccy;PostDate;Remarks;…;Credit Amount;Debit Amount;…`) — atau tempel Livin |
-| **QRIS (slot 5)** | CSV mutasi rekening penampung QRIS (baris `KR OTOMATIS MID : <mid> <merchant> QR : <bruto> DDR : <fee>`, diagregat per merchant, **nilai bruto** dicocokkan ke `TARTUN QR BULK`); atau settlement BCA Merchant agregat (`Merchant Name · ID · Frequency · Amount`); atau file lama format Otomax |
+| **QRIS (slot 5)** | **`ReportMerchantBCA_*.xlsx`** — workbook multi-sheet, yang dipakai **hanya lembar `SUMMARY`** (`Merchant Name · Merchant ID · Total Frequency · Total Amount`), diambil otomatis saat buka file; atau CSV mutasi rekening penampung QRIS (baris `KR OTOMATIS MID : <mid> <merchant> QR : <bruto> DDR : <fee>`, diagregat per merchant); atau tempel manual agregat `Merchant Name ⇥ ID ⇥ Freq ⇥ Amount`. **Nilai bruto** dicocokkan ke `TARTUN QR BULK` per outlet. |
 
 Setoran BCA yang di Otomax hanya tercatat generik ("Auto Deposit BCA", tanpa referensi) disandingkan ke kredit bank **per nominal unik** (status "cocok (nominal)"). Merchant QRIS yang namanya beda dari outlet Otomax bisa disandingkan manual di tab Rekonsiliasi — pilihan disimpan per Merchant ID (`localStorage`).
 
