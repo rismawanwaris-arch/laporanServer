@@ -220,6 +220,9 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
 .hist-row .exp-btn{flex:none}
 .hist-row .hn{flex-basis:100%; font-size:12.5px; color:var(--ink-soft)}
 .hist-empty{color:var(--ink-faint); font-style:italic; font-size:13px; padding:8px 2px}
+.saved-block{margin-top:32px; padding-top:20px; border-top:1px solid var(--line)}
+.saved-block h3{font-size:14px; margin:0 0 4px}
+.saved-block .hist-row{cursor:default}
 </style>
 
 <header>
@@ -228,7 +231,6 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
     <nav class="mainnav" id="mainnav">
       <button class="navbtn" data-view="import">Import Data</button>
       <button class="navbtn" data-view="rekon">Rekonsiliasi</button>
-      <button class="navbtn" data-view="riwayat" hidden>Riwayat</button>
       <button class="navbtn" data-view="pengaturan">Pengaturan</button>
     </nav>
     <span class="hspace"></span>
@@ -241,7 +243,7 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
   <!-- ========== IMPORT DATA ========== -->
   <section class="view" id="view-import">
     <h2>Import data</h2>
-    <p class="lead">Tempel data mentah di bawah lalu klik <b>Analisa data</b>. Hasilnya muncul di menu <b>Rekonsiliasi</b>.</p>
+    <p class="lead">Tempel data mentah, cek tanggal di header, lalu <b>Simpan data</b>. Hasil rekonsiliasi muncul di menu <b>Rekonsiliasi</b> dan tersimpan di daftar bawah.</p>
     <div class="field">
       <label for="taOto">1 · Data Otomax <span class="opt">— Mutasi Reseller, wajib</span></label>
       <textarea id="taOto" spellcheck="false" placeholder="Tempel di sini. Kolom dipisah TAB: Tanggal · Nama Reseller · Jumlah · Keterangan"></textarea>
@@ -266,9 +268,19 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
       </div>
     </div>
     <div class="io-actions">
-      <button class="btn-primary" id="runBtn">Analisa data</button>
+      <button class="btn-primary" id="runBtn">Simpan data</button>
+      <button class="btn-ghost" id="analyzeOnly" hidden>Analisa tanpa simpan</button>
       <button class="btn-ghost" id="clearData">Kosongkan</button>
       <span class="err" id="ioErr"></span>
+    </div>
+
+    <div class="saved-block" id="savedBlock" hidden>
+      <h3>Data tersimpan <span class="io-meta" id="histMeta"></span></h3>
+      <div id="histList" class="hist-list"></div>
+      <div class="io-actions">
+        <button class="btn-ghost" id="histRefresh">Muat ulang</button>
+        <a class="btn-ghost" href="/kelola" style="text-decoration:none">Kelola semua data (edit / hapus / backup) →</a>
+      </div>
     </div>
   </section>
 
@@ -297,17 +309,6 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
       <div class="panel" id="p-rekon" hidden></div>
       <div class="panel" id="p-kategori" hidden></div>
       <div class="panel" id="p-outlet" hidden></div>
-    </div>
-  </section>
-
-  <!-- ========== RIWAYAT ========== -->
-  <section class="view" id="view-riwayat" hidden>
-    <h2>Riwayat tersimpan <span class="io-meta" id="histMeta"></span></h2>
-    <p class="lead">Hasil analisa yang pernah disimpan ke server. Klik <b>Muat</b> untuk membuka lagi data suatu hari.</p>
-    <div id="histList" class="hist-list"></div>
-    <div class="io-actions">
-      <button class="btn-ghost" id="histRefresh">Muat ulang</button>
-      <a class="btn-ghost" href="/kelola" style="text-decoration:none">Kelola semua data (edit / hapus / backup) →</a>
     </div>
   </section>
 
@@ -1270,13 +1271,13 @@ $('#tabs').addEventListener('click', e => {
 });
 
 /* ---------- menu bar / view switching ---------- */
-const VIEWS = ['import','rekon','riwayat','pengaturan'];
+const VIEWS = ['import','rekon','pengaturan'];
 function showView(name){
   if(!VIEWS.includes(name)) name = 'import';
   VIEWS.forEach(v => { $('#view-' + v).hidden = (v !== name); });
   $('#mainnav').querySelectorAll('.navbtn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   if(name === 'rekon'){ $('#rekonEmpty').hidden = !!STATE; $('#rekonReady').hidden = !STATE; }
-  if(name === 'riwayat' && typeof refreshHist === 'function') refreshHist();
+  if(name === 'import' && SERVER_OK && !(AUTH.authRequired && !AUTH.authed) && typeof refreshHist === 'function') refreshHist();
   if(name === 'pengaturan') renderPengaturan();
   if(location.hash.slice(1) !== name) history.replaceState(null, '', '#' + name);
   window.scrollTo(0, 0);
@@ -1299,7 +1300,37 @@ function tampilanKosong(){
   $('#taOto').focus();
 }
 
-$('#runBtn').onclick = () => analyse(inputs());
+function bisaSimpan(){ return SERVER_OK && !(AUTH.authRequired && !AUTH.authed); }
+function updateImportButtons(){
+  const s = bisaSimpan();
+  $('#runBtn').textContent = s ? 'Simpan data' : 'Analisa data';
+  $('#analyzeOnly').hidden = !s;
+  $('#savedBlock').hidden = !s;
+}
+
+// Analisa + (kalau bisa) simpan ke server, ganti data tanggal yang sama.
+async function simpanData(){
+  analyse(inputs());                 // → pindah ke Rekonsiliasi; set STATE
+  if(!STATE) return;                  // gagal parse
+  if(!bisaSimpan()) return;
+  const tgl = $('#tglData').value;
+  try{
+    const dupes = (await SRV.list()).filter(r => r.tanggal === tgl);
+    if(dupes.length && !confirm('Data tanggal ' + tgl + ' sudah tersimpan. Ganti dengan yang ini?')){
+      toast('Ditampilkan tanpa disimpan'); return;
+    }
+    for(const d of dupes) await SRV.del(d.id);
+    const res = await SRV.save({ tanggal:tgl, catatan:$('#saveNote').value, sumber:inputs(), ringkasan:serverRingkasan() });
+    $('#saveNote').value = '';
+    toast((dupes.length ? 'Diperbarui: ' : 'Tersimpan: ') + res.tanggal);
+    refreshHist();
+  }catch(err){
+    if(/login/i.test(err.message)) showLogin(); else toast(err.message);
+  }
+}
+
+$('#runBtn').onclick = simpanData;
+$('#analyzeOnly').onclick = () => analyse(inputs());
 $('#clearData').onclick = () => {
   ['oto','bri','bca','mdr','qris'].forEach(k => store(LS[k], null));
   tampilanKosong();
@@ -1446,7 +1477,7 @@ $('#loginForm').addEventListener('submit', async e => {
     await SRV.login($('#loginPw').value);
     $('#loginModal').hidden = true; $('#loginPw').value = '';
     AUTH.authed = true;
-    $('[data-view="riwayat"]').hidden = false;
+    updateImportButtons();
     refreshHist(); afterAnalyse(); renderPengaturan(); toast('Berhasil masuk');
   }catch(err){ $('#loginErr').textContent = err.message; }
 });
@@ -1459,7 +1490,7 @@ async function refreshHist(){
     const rows = await SRV.list();
     $('#histMeta').textContent = rows.length + ' tersimpan';
     box.innerHTML = '';
-    if(!rows.length){ box.innerHTML = '<div class="hist-empty">Belum ada riwayat.</div>'; return; }
+    if(!rows.length){ box.innerHTML = '<div class="hist-empty">Belum ada data tersimpan.</div>'; return; }
     rows.forEach(r => box.append(histRow(r)));
   }catch(err){
     if(/login/i.test(err.message)){ showLogin(); return; }
@@ -1479,9 +1510,9 @@ function histRow(r){
     Object.assign(el('span','hd'), { textContent: tglTampil, title: r.tanggal }),
     Object.assign(el('span','hs'), { textContent:(s.otoN ? s.otoN + ' baris  ·  ' : '') + bankBits + '   ·   disimpan ' + String(r.dibuat_pada||'').replace('T',' ').slice(0,16) }),
   );
-  const load = el('button','exp-btn','Muat'); load.onclick = () => loadSnapshot(r.id);
+  const load = el('button','exp-btn','Buka'); load.onclick = () => loadSnapshot(r.id);
   const del  = el('button','exp-btn','Hapus');
-  del.onclick = async () => { if(confirm('Hapus riwayat ' + r.tanggal + '?')){ await SRV.del(r.id); refreshHist(); } };
+  del.onclick = async () => { if(confirm('Hapus data tanggal ' + tglTampil + '?')){ await SRV.del(r.id); refreshHist(); } };
   d.append(load, del);
   if(r.catatan) d.append(Object.assign(el('div','hn'), { textContent:r.catatan }));
   return d;
@@ -1510,8 +1541,12 @@ $('#saveGo').onclick = async () => {
   if(!STATE) return;
   $('#saveMsg').textContent = ''; $('#saveGo').disabled = true;
   try{
-    const res = await SRV.save({ tanggal:$('#tglData').value, catatan:$('#saveNote').value, sumber:inputs(), ringkasan:serverRingkasan() });
-    toast('Tersimpan ke server (' + res.tanggal + ')'); $('#saveNote').value = '';
+    const tgl = $('#tglData').value;
+    const dupes = (await SRV.list()).filter(r => r.tanggal === tgl);
+    if(dupes.length && !confirm('Data tanggal ' + tgl + ' sudah tersimpan. Ganti?')){ $('#saveGo').disabled = false; return; }
+    for(const d of dupes) await SRV.del(d.id);
+    const res = await SRV.save({ tanggal:tgl, catatan:$('#saveNote').value, sumber:inputs(), ringkasan:serverRingkasan() });
+    toast((dupes.length ? 'Diperbarui: ' : 'Tersimpan: ') + res.tanggal); $('#saveNote').value = '';
     $('#resbar').hidden = true; $('#saveBtn').classList.remove('on');
     refreshHist();
   }catch(err){
@@ -1528,7 +1563,7 @@ async function initServer(){
     AUTH = s;
   }catch{ return; }
   SERVER_OK = true;
-  $('[data-view="riwayat"]').hidden = false;
+  updateImportButtons();
   if(AUTH.authRequired && !AUTH.authed){ showLogin(); }
   refreshHist(); afterAnalyse();
   if(!$('#view-pengaturan').hidden) renderPengaturan();
@@ -1552,6 +1587,7 @@ $('#tglData').value = localDate(new Date());
 $('#tglData').addEventListener('change', () => { $('#tglData').dataset.touched = '1'; });
 
 (function boot(){
+  updateImportButtons();
   const savedOto = read(LS.oto);
   if(savedOto){
     $('#taOto').value = savedOto;

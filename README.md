@@ -66,17 +66,16 @@ Data persist di `./data` (bind-mount). Health check: `GET /healthz`.
 
 | Menu | Isi |
 | --- | --- |
-| **Import Data** | 5 kotak tempel + Analisa. Selesai → pindah ke Rekonsiliasi. |
-| **Rekonsiliasi** | Hasil: kartu angka + tab Ringkasan / Rekonsiliasi / Kategori / Per outlet + tombol Simpan. |
-| **Riwayat** | Daftar snapshot tersimpan (muncul kalau server aktif). |
+| **Import Data** | 5 kotak tempel + **Simpan data** (analisa + simpan ke server, ganti data tanggal yang sama). Daftar **data tersimpan** ada di bawahnya — klik **Buka** untuk membuka lagi. |
+| **Rekonsiliasi** | Hasil: kartu angka + tab Ringkasan / Rekonsiliasi / Kategori (termasuk rekap per tanggal) / Per outlet. Tombol **Simpan hasil** untuk simpan ulang setelah ubah sandingan. |
 | **Pengaturan** | Tema · sandingan merchant↔outlet · akun (login / ganti password) · link Kelola DB · hapus data lokal. |
 
-Header juga memuat **pemilih tanggal data** (dipakai saat Simpan) dan toggle tema.
+Header juga memuat **pemilih tanggal data** (auto dari keterangan `TGL` / kolom Tanggal, bisa diubah manual) dan toggle tema. Tanpa server, tombolnya jadi "Analisa data" saja.
 
 `/kelola` — halaman terpisah: tabel semua snapshot, edit tanggal/catatan, lihat detail (teks mentah), hapus satu / hapus semua, info ukuran DB.
 
 Satu *snapshot* menyimpan teks mentah yang ditempel (Otomax + tiap bank) plus ringkasan angka,
-jadi bisa dimuat ulang kapan saja lewat tombol **Muat** di panel Riwayat.
+jadi bisa dibuka lagi kapan saja lewat tombol **Buka** di daftar Import Data.
 
 ## Catatan
 
