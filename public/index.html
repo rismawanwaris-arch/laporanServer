@@ -1367,6 +1367,23 @@ function serverRingkasan(){
   };
 }
 
+// "Tanggal data" = tanggal usaha, bukan jam entri. Baris QR BULK (dan admin) dientri
+// keesokan harinya tapi keterangannya memuat "TGL DD-MMM-YYYY" — pakai itu. Sisanya pakai
+// tanggal timestamp. Ambil yang paling sering muncul.
+const BLN3 = { JAN:0,FEB:1,MAR:2,APR:3,MEI:4,MAY:4,JUN:5,JUL:6,AGU:7,AGS:7,AUG:7,SEP:8,OKT:9,OCT:9,NOV:10,NOP:10,DES:11,DEC:11 };
+function tanggalUsaha(r){
+  const m = String(r.ket).match(/\bTGL\s+(\d{1,2})[-\/\s]([A-Za-z]{3})[A-Za-z]*[-\/\s](\d{4})/);
+  if(m){ const mo = BLN3[m[2].toUpperCase()]; if(mo != null) return new Date(+m[3], mo, +m[1]); }
+  return isNaN(r.d) ? null : new Date(r.d.getFullYear(), r.d.getMonth(), r.d.getDate());
+}
+function tanggalDataOtomatis(rows){
+  const cnt = new Map();
+  rows.forEach(r => { const d = tanggalUsaha(r); if(d && !isNaN(d)){ const k = localDate(d); cnt.set(k, (cnt.get(k) || 0) + 1); } });
+  let best = null, bn = -1;
+  cnt.forEach((n, k) => { if(n > bn){ bn = n; best = k; } });
+  return best || localDate(new Date());
+}
+
 function afterAnalyse(){
   const ok = SERVER_OK && !(AUTH.authRequired && !AUTH.authed) && !!STATE;
   $('#saveBtn').hidden = !ok;
@@ -1374,8 +1391,7 @@ function afterAnalyse(){
   $('#saveBtn').classList.remove('on');
   // Isi tanggal header dari data (kalau user belum pilih sendiri)
   if(STATE && !$('#tglData').dataset.touched){
-    const ds = STATE.otoRows.map(r=>r.d).filter(d=>!isNaN(d)).sort((a,b)=>a-b);
-    $('#tglData').value = localDate(ds.length ? ds[0] : new Date());
+    $('#tglData').value = tanggalDataOtomatis(STATE.otoRows);
   }
 }
 { const _analyse = analyse; analyse = function(src, persist){ _analyse(src, persist); afterAnalyse(); }; }
