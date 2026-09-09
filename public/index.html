@@ -908,11 +908,45 @@ function renderKategori(){
   const aggs = catAgg(otoRows);
   const maxAbs = Math.max(...aggs.map(a => Math.abs(a.sum)), 1);
   const p = $('#p-kategori'); p.innerHTML = '';
-  p.append(el('h2',null,'Transaksi per kategori'));
-  p.append(Object.assign(el('p','lead'), { textContent: aggs.length + ' kategori. Klik ▸ untuk rincian channel.' }));
+  p.append(el('h2',null,'Transaksi per tanggal & kategori'));
+  p.append(Object.assign(el('p','lead'), { textContent: 'Tiap baris dikelompokkan menurut tanggal usahanya (TGL di keterangan bila ada, selain itu kolom Tanggal).' }));
+
+  /* ---- per tanggal ---- */
+  const byTgl = new Map();
+  otoRows.forEach(r => {
+    const d = tanggalUsaha(r);
+    const k = (d && !isNaN(d)) ? localDate(d) : '(tak terbaca)';
+    const g = byTgl.get(k) || { k, n:0, masuk:0, biaya:0, lain:0, cats:new Map() };
+    g.n++;
+    if(r.arah === 'masuk') g.masuk += r.jumlah;
+    else if(r.arah === 'biaya') g.biaya += r.jumlah;
+    else g.lain += r.jumlah;
+    g.cats.set(r.cat, (g.cats.get(r.cat) || 0) + 1);
+    byTgl.set(k, g);
+  });
+  const tglRows = [...byTgl.values()].sort((a,b) => b.k.localeCompare(a.k));
+  const dc = el('div','card');
+  const dh = el('div','card-h'); dh.innerHTML = '<h3>Per tanggal</h3>';
+  const dsalin = el('button','exp-btn','Salin CSV');
+  dsalin.onclick = () => showCopy('Per tanggal (CSV)', csv(['Tanggal','Transaksi','Uang masuk','Potongan admin','Lain'],
+    tglRows.map(g => [g.k, g.n, g.masuk, g.biaya, g.lain])));
+  const drr = el('div','r'); drr.append(dsalin); dh.append(drr); dc.append(dh);
+  const dsc = el('div','tbl-scroll'); const dtb = el('table');
+  dtb.innerHTML = '<thead><tr><th>Tanggal</th><th class="n">Trx</th><th class="n">Uang masuk</th><th class="n">Potongan admin</th><th>Kategori utama</th></tr></thead>';
+  const dbody = el('tbody');
+  tglRows.forEach(g => {
+    const top = [...g.cats.entries()].sort((x,y) => y[1] - x[1]).slice(0,2).map(([c,n]) => c + ' (' + n + ')').join(', ');
+    const tr = el('tr');
+    const dt = (g.k === '(tak terbaca)') ? g.k : tglS(new Date(g.k + 'T00:00:00'));
+    tr.innerHTML = '<td>' + dt + '</td><td class="n">' + fmt(g.n) + '</td><td class="n pos">' + rp(g.masuk) +
+      '</td><td class="n ' + (g.biaya < 0 ? 'neg' : '') + '">' + (g.biaya ? rp(g.biaya) : '·') +
+      '</td><td style="font-size:12px;color:var(--ink-soft)">' + top + '</td>';
+    dbody.append(tr);
+  });
+  dtb.append(dbody); dsc.append(dtb); dc.append(dsc); p.append(dc);
 
   const card = el('div','card');
-  const h = el('div','card-h'); h.innerHTML = '<h3>Rekap kategori</h3>';
+  const h = el('div','card-h'); h.innerHTML = '<h3>Rekap kategori (semua tanggal)</h3>';
   const salin = el('button','exp-btn','Salin CSV');
   salin.onclick = () => showCopy('Rekap kategori (CSV)', csv(['Kategori','Transaksi','Nilai'], aggs.map(a => [a.name, a.n, a.sum])));
   const rr = el('div','r'); rr.append(salin); h.append(rr); card.append(h);
