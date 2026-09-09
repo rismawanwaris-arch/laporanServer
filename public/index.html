@@ -255,7 +255,7 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
   <!-- ========== DASHBOARD ========== -->
   <section class="view" id="view-dashboard" hidden>
     <h2>Dashboard</h2>
-    <p class="lead">Ringkasan per tanggal — 7 hari terakhir. <b>Uang masuk</b> = kredit di rekening bank (acuan). <b>Selisih</b> = bank − Otomax. <b>Perlu dicek</b> = nilai yang belum tersanding.</p>
+    <p class="lead">Ringkasan per tanggal — 7 hari terakhir. <b>Uang masuk</b> = kredit di rekening bank (acuan). <b>Selisih</b> = bank − Otomax. <b>Perlu dicek</b> = nilai yang belum tersanding. <b>Admin pusat</b> = pendapatan fee tartun (netto REV).</p>
     <div class="io-actions" style="margin-bottom:14px">
       <button class="btn-primary" id="dashAnalisaAll">Analisa 7 hari</button>
       <button class="btn-ghost" id="dashRefresh">Muat ulang</button>
@@ -1074,12 +1074,33 @@ function storanAgg(rows){
   });
   return [...m.values()].map(g => ({ ...g, net: g.stor + g.ambil })).sort((a,b) => b.n - a.n);
 }
+
+// Pendapatan admin pusat = fee tartun yang dipotong dari saldo outlet, netto setelah REV admin.
+// Bukan mutasi bank — murni catatan internal Otomax.
+const REV_ADMIN_CAT = 'REV Admin Tartun (koreksi potongan)';
+function adminRekap(rows){
+  const perOutlet = new Map(), perTgl = new Map();
+  let potong = 0, rev = 0, nPotong = 0, nRev = 0;
+  rows.forEach(r => {
+    const isPotong = r.arah === 'biaya', isRev = r.cat === REV_ADMIN_CAT;
+    if(!isPotong && !isRev) return;
+    const d = tanggalUsaha(r); const tk = (d && !isNaN(d)) ? localDate(d) : '(tak terbaca)';
+    const po = perOutlet.get(r.reseller) || { name:r.reseller.trim(), potong:0, rev:0 };
+    const pt = perTgl.get(tk) || { k:tk, potong:0, rev:0 };
+    if(isPotong){ const v = Math.abs(r.jumlah); potong += v; nPotong++; po.potong += v; pt.potong += v; }
+    else { rev += r.jumlah; nRev++; po.rev += r.jumlah; pt.rev += r.jumlah; }
+    perOutlet.set(r.reseller, po); perTgl.set(tk, pt);
+  });
+  const outlet = [...perOutlet.values()].map(o => ({ ...o, netto:o.potong - o.rev })).filter(o => o.potong || o.rev).sort((a,b) => b.netto - a.netto);
+  const tanggal = [...perTgl.values()].map(t => ({ ...t, netto:t.potong - t.rev })).sort((a,b) => b.k.localeCompare(a.k));
+  return { potong, rev, netto: potong - rev, nPotong, nRev, outlet, tanggal };
+}
 function renderTiles(){
   const { otoRows, bankRes, qris } = STATE;
   const tarikTunai = otoRows.filter(r => (r.cat || '').startsWith('Tarik Tunai')).reduce((s,r) => s + r.jumlah, 0);
   const tarikN = otoRows.filter(r => (r.cat || '').startsWith('Tarik Tunai')).length;
   const storNet = storanAgg(otoRows).reduce((s,g) => s + g.net, 0);
-  const admin = otoRows.filter(r => r.arah === 'biaya').reduce((s,r) => s + r.jumlah, 0);
+  const adm = adminRekap(otoRows);
   const ds = otoRows.map(r => tanggalUsaha(r)).filter(d => d && !isNaN(d)).sort((a,b) => a - b);
   const range = ds.length ? (tglS(ds[0]) === tglS(ds[ds.length-1]) ? tglS(ds[0]) : tglS(ds[0]) + ' – ' + tglS(ds[ds.length-1])) : '—';
   const hasRec = bankRes.some(r => !r.noSource) || !qris.noSource;
@@ -1104,7 +1125,7 @@ function renderTiles(){
     { k:'Transaksi Otomax', v:fmt(otoRows.length), s:range, cls:'' },
     { k:'Tarik tunai (Otomax)', v:rp(tarikTunai), s:fmt(tarikN) + ' transaksi', cls:'' },
     { k:'Storan kas (net)', v:rp(storNet), s: storNet < 0 ? 'lebih banyak diambil' : storNet > 0 ? 'lebih banyak disetor' : 'seimbang', cls: storNet < 0 ? 'warn' : '' },
-    { k:'Potongan admin', v:rp(admin), s:otoRows.filter(r=>r.arah==='biaya').length + ' potongan', cls:'warn' },
+    { k:'Pendapatan admin (pusat)', v:rp(adm.netto), s: adm.rev ? 'kotor ' + rp(adm.potong) + ' − REV ' + rp(adm.rev) : adm.nPotong + ' potongan', cls:'' },
   ];
   if(hasRec){
     tiles.push({ k:'Uang masuk di rekening bank (acuan)', v:rp(bankMasuk), s:fmt(cocokN) + ' setoran cocok dengan Otomax', cls:'accent' });
@@ -1269,11 +1290,11 @@ function renderKategori(){
   const dc = el('div','card');
   const dh = el('div','card-h'); dh.innerHTML = '<h3>Per tanggal</h3>';
   const dsalin = el('button','exp-btn','Salin CSV');
-  dsalin.onclick = () => showCopy('Per tanggal (CSV)', csv(['Tanggal','Transaksi','Uang masuk','Potongan admin','Lain'],
+  dsalin.onclick = () => showCopy('Per tanggal (CSV)', csv(['Tanggal','Transaksi','Uang masuk','Admin dipotong (kotor)','Lain'],
     tglRows.map(g => [g.k, g.n, g.masuk, g.biaya, g.lain])));
   const drr = el('div','r'); drr.append(dsalin); dh.append(drr); dc.append(dh);
   const dsc = el('div','tbl-scroll'); const dtb = el('table');
-  dtb.innerHTML = '<thead><tr><th>Tanggal</th><th class="n">Trx</th><th class="n">Uang masuk</th><th class="n">Potongan admin</th><th>Kategori utama</th></tr></thead>';
+  dtb.innerHTML = '<thead><tr><th>Tanggal</th><th class="n">Trx</th><th class="n">Uang masuk</th><th class="n">Admin (kotor)</th><th>Kategori utama</th></tr></thead>';
   const dbody = el('tbody');
   tglRows.forEach(g => {
     const top = [...g.cats.entries()].sort((x,y) => y[1] - x[1]).slice(0,2).map(([c,n]) => c + ' (' + n + ')').join(', ');
@@ -1285,6 +1306,48 @@ function renderKategori(){
     dbody.append(tr);
   });
   dtb.append(dbody); dsc.append(dtb); dc.append(dsc); p.append(dc);
+
+  /* ---- pendapatan admin (pusat) ---- */
+  const ar = adminRekap(otoRows);
+  if(ar.potong || ar.rev){
+    const ac = el('div','card');
+    const ah = el('div','card-h');
+    ah.innerHTML = '<h3>Pendapatan admin (pusat) <span class="num" style="color:var(--good);font-weight:600">' + rp(ar.netto) + '</span></h3>';
+    const acsv = el('button','exp-btn','Salin per outlet');
+    acsv.onclick = () => showCopy('Pendapatan admin per outlet (CSV)', csv(
+      ['Outlet','Admin dipotong','REV admin','Netto'],
+      ar.outlet.map(o => [o.name, o.potong, o.rev, o.netto])
+    ));
+    const acsv2 = el('button','exp-btn','Salin per tanggal');
+    acsv2.onclick = () => showCopy('Pendapatan admin per tanggal (CSV)', csv(
+      ['Tanggal','Admin dipotong','REV admin','Netto'],
+      ar.tanggal.map(t => [t.k, t.potong, t.rev, t.netto])
+    ));
+    const arr = el('div','r'); arr.append(acsv2, acsv); ah.append(arr); ac.append(ah);
+    ac.append(Object.assign(el('p','hint'), { style:'padding:8px 16px 0', textContent:'Fee tartun yang dipotong dari saldo outlet, netto setelah REV admin. Ini pendapatan pusat — tidak ada mutasi banknya (bandingkan dengan rekapan Anda sendiri).' }));
+
+    const mk = (judul, baris, keyLabel) => {
+      const sec = el('div'); sec.style.padding = '10px 16px 4px';
+      sec.append(Object.assign(el('div'), { style:'font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:4px', textContent:judul }));
+      const sc2 = el('div','tbl-scroll'); if(baris.length > 12) sc2.style.maxHeight = '340px';
+      const t = el('table','xtable');
+      t.innerHTML = '<thead><tr><th>' + keyLabel + '</th><th class="n">Dipotong</th><th class="n">REV admin</th><th class="n">Netto</th></tr></thead>';
+      const tb2 = el('tbody');
+      baris.forEach(row => {
+        const nama = keyLabel === 'Tanggal' ? (row.k === '(tak terbaca)' ? row.k : tglS(new Date(row.k + 'T00:00:00'))) : row.name;
+        const tr = el('tr');
+        tr.innerHTML = '<td>' + nama + '</td><td class="n neg">' + rp(-row.potong) + '</td><td class="n ' + (row.rev ? 'pos' : '') + '">' + (row.rev ? rp(row.rev) : '·') + '</td><td class="n pos">' + rp(row.netto) + '</td>';
+        tb2.append(tr);
+      });
+      const tf = el('tr','tf-row');
+      tf.innerHTML = '<td>Total</td><td class="n">' + rp(-ar.potong) + '</td><td class="n">' + (ar.rev ? rp(ar.rev) : '·') + '</td><td class="n">' + rp(ar.netto) + '</td>';
+      tb2.append(tf); t.append(tb2); sc2.append(t); sec.append(sc2);
+      return sec;
+    };
+    ac.append(mk('Per tanggal', ar.tanggal, 'Tanggal'));
+    ac.append(mk('Per outlet', ar.outlet, 'Outlet'));
+    p.append(ac);
+  }
 
   const card = el('div','card');
   const h = el('div','card-h'); h.innerHTML = '<h3>Rekap kategori (semua tanggal)</h3>';
@@ -1632,7 +1695,8 @@ function renderOutlet(){
     const o = m.get(r.reseller) || { name:r.reseller, tt:0, ttn:0, admin:0, storIn:0, ambil:0, net:0 };
     o.net += r.jumlah;
     if(r.cat.startsWith('Tarik Tunai')){ o.tt += r.jumlah; o.ttn++; }
-    if(r.arah === 'biaya') o.admin += r.jumlah;
+    if(r.arah === 'biaya') o.admin += Math.abs(r.jumlah);            // pendapatan admin (netto)
+    if(r.cat === REV_ADMIN_CAT) o.admin -= r.jumlah;
     if(r.cat.startsWith('Storan Masuk')) o.storIn += r.jumlah;
     if(r.cat.startsWith('Ambil Storan')) o.ambil += r.jumlah;
     m.set(r.reseller, o);
@@ -1645,12 +1709,12 @@ function renderOutlet(){
   const h = el('div','card-h'); h.innerHTML = '<h3>Outlet</h3>';
   const salin = el('button','exp-btn','Salin CSV');
   salin.onclick = () => showCopy('Rekap per outlet (CSV)', csv(
-    ['Outlet','Tarik tunai','Trx','Potongan admin','Storan masuk','Ambil storan','Net'],
+    ['Outlet','Tarik tunai','Trx','Pendapatan admin (netto)','Storan masuk','Ambil storan','Net'],
     rows.map(r => [r.name, r.tt, r.ttn, r.admin, r.storIn, r.ambil, r.net])
   ));
   const rr = el('div','r'); rr.append(salin); h.append(rr); card.append(h);
   const sc = el('div','tbl-scroll'); const tb = el('table');
-  const cols = [['name','Outlet',0],['tt','Tarik tunai',1],['ttn','Trx',1],['admin','Admin',1],['storIn','Storan msk',1],['ambil','Ambil stor',1],['net','Net',1]];
+  const cols = [['name','Outlet',0],['tt','Tarik tunai',1],['ttn','Trx',1],['admin','Admin netto',1],['storIn','Storan msk',1],['ambil','Ambil stor',1],['net','Net',1]];
   const thead = el('tr');
   cols.forEach(([key,label,n]) => { const th = el('th', (n ? 'n ' : '') + 'sort', label); th.dataset.key = key; thead.append(th); });
   const thd = el('thead'); thd.append(thead); tb.append(thd);
@@ -1665,7 +1729,7 @@ function renderOutlet(){
         '<td>' + r.name + '</td>' +
         '<td class="n pos">' + rp(r.tt) + '</td>' +
         '<td class="n">' + fmt(r.ttn) + '</td>' +
-        '<td class="n ' + (r.admin < 0 ? 'neg' : '') + '">' + rp(r.admin) + '</td>' +
+        '<td class="n ' + (r.admin > 0 ? 'pos' : r.admin < 0 ? 'neg' : '') + '">' + (r.admin ? rp(r.admin) : '·') + '</td>' +
         '<td class="n">' + (r.storIn ? rp(r.storIn) : '·') + '</td>' +
         '<td class="n ' + (r.ambil < 0 ? 'neg' : '') + '">' + (r.ambil ? rp(r.ambil) : '·') + '</td>' +
         '<td class="n ' + (r.net < 0 ? 'neg' : 'pos') + '">' + rp(r.net) + '</td>';
@@ -1820,8 +1884,9 @@ async function simpanBatch(jobs){
 // Ringkasan ringan saat simpan: kategori & total per tanggal, tanpa rekonsiliasi bank.
 function ringkasanRingan(src, fokus, tanggal){
   const oto = parseOtomax(src.oto);
-  oto.forEach(r => { const c = categorise(r.ket); r.arah = c.arah; r.d = new Date(r.tgl); });
+  oto.forEach(r => { const c = categorise(r.ket); r.cat = c.name; r.arah = c.arah; r.d = new Date(r.tgl); });
   const scoped = fokus ? oto.filter(r => { const d = tanggalUsaha(r); return d && localDate(d) === fokus; }) : oto;
+  const ar = adminRekap(scoped);
   const by = new Map();
   scoped.forEach(r => {
     const d = tanggalUsaha(r); const k = d && !isNaN(d) ? localDate(d) : '?';
@@ -1834,7 +1899,11 @@ function ringkasanRingan(src, fokus, tanggal){
     perTanggal: [...by.values()].sort((a,b) => a.tgl < b.tgl ? -1 : 1),
     otoN: scoped.length,
     masuk: scoped.filter(r => r.arah === 'masuk').reduce((s,r) => s + r.jumlah, 0),
-    admin: scoped.filter(r => r.arah === 'biaya').reduce((s,r) => s + r.jumlah, 0),
+    admin: -ar.potong,
+    adminRev: ar.rev,
+    adminNetto: ar.netto,
+    adminOutlet: ar.outlet,
+    adminTanggal: ar.tanggal,
     punyaBank: { bri: !!src.bri.trim(), bca: !!src.bca.trim(), mdr: !!src.mdr.trim(), qris: !!src.qris.trim() },
   };
 }
@@ -2126,6 +2195,7 @@ function serverRingkasan(st){
   });
   const qc = qris.noSource ? [] : qris.oto.filter(o=>o.status==='cocok');
   const qs = qris.noSource ? [] : qris.oto.filter(o=>o.status==='selisih');
+  const ar = adminRekap(otoRows);
   return {
     dianalisa: true,
     fokusTanggal: st.fokusTanggal || null,
@@ -2133,7 +2203,11 @@ function serverRingkasan(st){
     otoN: otoRows.length,
     masuk: otoRows.filter(r=>r.arah==='masuk').reduce((s,r)=>s+r.jumlah,0),
     tarikTunai: otoRows.filter(r=>(r.cat||'').startsWith('Tarik Tunai')).reduce((s,r)=>s+r.jumlah,0),
-    admin: otoRows.filter(r=>r.arah==='biaya').reduce((s,r)=>s+r.jumlah,0),
+    admin: -ar.potong,
+    adminRev: ar.rev,
+    adminNetto: ar.netto,
+    adminOutlet: ar.outlet,
+    adminTanggal: ar.tanggal,
     banks,
     qris: qris.noSource ? null : {
       cocokN: qc.length,
@@ -2264,11 +2338,12 @@ async function analisaRecord(id){
 function dashMetrics(s){
   if(!s) return null;
   const otomax = s.masuk || 0;
-  if(!(s.dianalisa || s.banks)) return { analysed:false, otomax };
+  const admin = s.adminNetto != null ? s.adminNetto : null;
+  if(!(s.dianalisa || s.banks)) return { analysed:false, otomax, admin };
   let bank = 0, belum = 0, tanpaBukti = 0;
   Object.values(s.banks || {}).forEach(v => { bank += v.kredit || 0; belum += v.unSum || 0; tanpaBukti += v.tidakSum || 0; });
   if(s.qris){ bank += s.qris.masuk || 0; belum += s.qris.unSum || 0; }
-  return { analysed:true, bank, otomax, selisih: bank - otomax, perluDicek: belum + tanpaBukti };
+  return { analysed:true, bank, otomax, admin, selisih: bank - otomax, perluDicek: belum + tanpaBukti };
 }
 
 // 7 tanggal ke belakang, di-anchor ke data terbaru (biar dashboard nggak kosong kalau
@@ -2307,9 +2382,9 @@ async function renderDashboard(){
 
   const card = el('div','card');
   const sc = el('div','tbl-scroll'); const tb = el('table','xtable');
-  tb.innerHTML = '<thead><tr><th>Tanggal</th><th class="n">Uang masuk (bank)</th><th class="n">Otomax</th><th class="n">Selisih</th><th class="n">Perlu dicek</th><th></th></tr></thead>';
+  tb.innerHTML = '<thead><tr><th>Tanggal</th><th class="n">Uang masuk (bank)</th><th class="n">Otomax</th><th class="n">Selisih</th><th class="n">Perlu dicek</th><th class="n">Admin pusat</th><th></th></tr></thead>';
   const tbody = el('tbody');
-  let tB = 0, tO = 0, tS = 0, tP = 0;
+  let tB = 0, tO = 0, tS = 0, tP = 0, tA = 0;
 
   hari.forEach(k => {
     const rec = byTgl.get(k);
@@ -2318,6 +2393,7 @@ async function renderDashboard(){
     const tglCell = Object.assign(el('td'), { innerHTML: '<b>' + tglS(dt) + '</b>' });
     if(!rec){
       tr.append(tglCell,
+        Object.assign(el('td','n'), { textContent:'—' }),
         Object.assign(el('td','n'), { textContent:'—' }),
         Object.assign(el('td','n'), { textContent:'—' }),
         Object.assign(el('td','n'), { textContent:'—' }),
@@ -2334,14 +2410,15 @@ async function renderDashboard(){
         Object.assign(el('td','n'), { innerHTML:'<span class="hint">belum dianalisa</span>' }),
         Object.assign(el('td','n'), { textContent: rp(m.otomax) }),
         Object.assign(el('td','n'), { textContent:'—' }),
-        Object.assign(el('td','n'), { textContent:'—' }));
+        Object.assign(el('td','n'), { textContent:'—' }),
+        Object.assign(el('td','n pos'), { textContent: m.admin != null ? rp(m.admin) : '—' }));
       const act = el('td');
       const b = el('button','mini','Analisa'); b.onclick = async e => { e.stopPropagation(); b.textContent = '…'; b.disabled = true; await analisaRecord(rec.id); renderDashboard(); };
       act.append(b); tr.append(act);
-      tO += m.otomax;
+      tO += m.otomax; if(m.admin != null) tA += m.admin;
       tbody.append(tr); return;
     }
-    tB += m.bank; tO += m.otomax; tS += m.selisih; tP += m.perluDicek;
+    tB += m.bank; tO += m.otomax; tS += m.selisih; tP += m.perluDicek; if(m.admin != null) tA += m.admin;
     const selCell = el('td','n');
     if(m.selisih === 0) selCell.innerHTML = '<span class="pos">Rp0 ✓</span>';
     else selCell.innerHTML = '<span class="' + (m.selisih < 0 ? 'neg' : 'warn') + '">' + (m.selisih > 0 ? '+' : '−') + rp(Math.abs(m.selisih)) + '</span>';
@@ -2351,6 +2428,7 @@ async function renderDashboard(){
       Object.assign(el('td','n'), { textContent: rp(m.bank) }),
       Object.assign(el('td','n'), { textContent: rp(m.otomax) }),
       selCell, chkCell,
+      Object.assign(el('td','n pos'), { textContent: m.admin != null ? rp(m.admin) : '—' }),
       Object.assign(el('td'), { innerHTML:'<span class="hint">buka →</span>' }));
     tbody.append(tr);
   });
@@ -2358,7 +2436,8 @@ async function renderDashboard(){
   const tf = el('tr','tf-row');
   tf.innerHTML = '<td>Total 7 hari</td><td class="n">' + rp(tB) + '</td><td class="n">' + rp(tO) + '</td>'
     + '<td class="n">' + (tS === 0 ? 'Rp0' : (tS > 0 ? '+' : '−') + rp(Math.abs(tS))) + '</td>'
-    + '<td class="n">' + (tP === 0 ? '✓' : rp(tP)) + '</td><td></td>';
+    + '<td class="n">' + (tP === 0 ? '✓' : rp(tP)) + '</td>'
+    + '<td class="n">' + rp(tA) + '</td><td></td>';
   tbody.append(tf);
   tb.append(tbody); sc.append(tb); card.append(sc);
   body.innerHTML = ''; body.append(rangeCap, card);
