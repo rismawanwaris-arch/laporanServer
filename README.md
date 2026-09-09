@@ -30,19 +30,21 @@ npm start
 | `PORT`         | `3000`         | Port HTTP                                             |
 | `DATA_DIR`     | `./data`       | Lokasi file SQLite                                    |
 | `APP_PASSWORD` | *(kosong)*     | Bila diisi → halaman minta login (1 password bersama) |
+| `HOST_PORT`    | `3000`         | Port di sisi host (compose). Ganti kalau 3000 dipakai |
 
 Auth: password tunggal, sesi disimpan di memori server (hilang saat restart — cukup untuk pemakaian di jaringan rumah).
 
 ## Deploy ke ZimaOS (Docker)
 
 ```bash
-# opsional: set password
-echo 'APP_PASSWORD=rahasia123' > .env
+# opsional: buat .env
+echo 'HOST_PORT=3100'          >  .env   # kalau port 3000 sudah dipakai
+echo 'APP_PASSWORD=rahasia123' >> .env   # kalau mau langsung pakai password
 
 docker compose up -d --build
 ```
 
-Data persist di `./data` (bind-mount). Health check: `GET /healthz`.
+Buka `http://<ip-host>:<HOST_PORT>`. Data persist di `./data` (bind-mount). Health check: `GET /healthz`.
 
 ## API
 

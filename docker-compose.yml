@@ -5,7 +5,8 @@ services:
     container_name: rekap-tartun
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      # Port di sisi host bisa diganti lewat .env (HOST_PORT=...) kalau 3000 sudah dipakai.
+      - "${HOST_PORT:-3000}:3000"
     environment:
       # Kosongkan APP_PASSWORD untuk menonaktifkan login.
       APP_PASSWORD: "${APP_PASSWORD:-}"
