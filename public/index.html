@@ -160,7 +160,7 @@ td.n,th.n{text-align:right; font-family:"IBM Plex Mono",monospace; font-variant-
 tbody tr:hover{background:var(--surface-2)}
 tbody tr:last-child td{border-bottom:none}
 .tf-row td{border-top:2px solid var(--line); font-weight:600; background:var(--surface-2)}
-.pos{color:var(--good)} .neg{color:var(--crit)}
+.pos{color:var(--good)} .neg{color:var(--crit)} .warn{color:var(--warn)}
 .bar-cell{width:150px}
 .bar{height:7px; border-radius:4px; background:var(--accent); opacity:.85}
 .bar.neg{background:var(--crit)}
@@ -235,6 +235,7 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
   <div class="hbar">
     <div class="brand"><b>Rekap Tartun</b><span>mutasi bank &times; Otomax</span></div>
     <nav class="mainnav" id="mainnav">
+      <button class="navbtn" data-view="dashboard" id="navDashboard" hidden>Dashboard</button>
       <button class="navbtn" data-view="import">Import Data</button>
       <button class="navbtn" data-view="rekon">Rekonsiliasi</button>
       <button class="navbtn" data-view="pengaturan">Pengaturan</button>
@@ -246,6 +247,18 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
 </header>
 
 <main class="wrap">
+  <!-- ========== DASHBOARD ========== -->
+  <section class="view" id="view-dashboard" hidden>
+    <h2>Dashboard</h2>
+    <p class="lead">Ringkasan per tanggal — 7 hari terakhir. <b>Uang masuk</b> = kredit di rekening bank (acuan). <b>Selisih</b> = bank − Otomax. <b>Perlu dicek</b> = nilai yang belum tersanding.</p>
+    <div class="io-actions" style="margin-bottom:14px">
+      <button class="btn-primary" id="dashAnalisaAll">Analisa 7 hari</button>
+      <button class="btn-ghost" id="dashRefresh">Muat ulang</button>
+      <span class="err" id="dashMsg"></span>
+    </div>
+    <div id="dashBody"></div>
+  </section>
+
   <!-- ========== IMPORT DATA ========== -->
   <section class="view" id="view-import">
     <h2>Import data</h2>
@@ -617,10 +630,11 @@ function parseMandiriCsv(text){
 
 // BCA QRIS — mutasi rekening penampung QRIS (CSV): baris "KR OTOMATIS MID : <mid> <merchant> QR : <bruto> DDR : <fee>"
 function isBcaQrisCsv(t){ return /KR OTOMATIS\s+MID\s*:/i.test(t); }
-function parseBcaQrisCsv(text){
+function parseBcaQrisCsv(text, fokusISO){
   const rows = csvRows(text, ',');
   const agg = new Map();
   for(const r of rows){
+    if(fokusISO){ const d = rowDateISO(r[0]); if(d && d !== fokusISO) continue; }
     const m = String(r[1] || '').match(/KR OTOMATIS\s+MID\s*:\s*(\d+)\s+(.+?)\s+QR\s*:\s*([\d.]+)\s+DDR\s*:\s*([\d.]+)/i);
     if(!m) continue;
     const mid = m[1].replace(/^885/, '');
@@ -955,36 +969,42 @@ function filterRowsByDate(rows, iso){
   return rows.filter(b => { const d = rowDateISO(b.waktu); return d == null || d === iso; });
 }
 
-function analyse(src, persist, opts){
-  opts = opts || {};
-  const fokus = opts.fokusTanggal || null;
-  let otoRows = parseOtomax(src.oto);
-  if(!otoRows.length){ $('#ioErr').textContent = 'Data Otomax tidak terbaca. Pastikan kolom dipisah TAB.'; return; }
-  $('#ioErr').textContent = '';
+// Hitung rekonsiliasi tanpa menyentuh STATE / DOM — dipakai analyse() dan dashboard (headless).
+function computeAnalysis(src, fokus){
+  fokus = fokus || null;
+  let otoRows = parseOtomax(src.oto || '');
+  if(!otoRows.length) return null;
   otoRows.forEach(r => { const c = categorise(r.ket); r.cat = c.name; r.arah = c.arah; r.sub = subChannel(r.ket); r.d = new Date(r.tgl); });
   if(fokus){
     otoRows = otoRows.filter(r => { const d = tanggalUsaha(r); return d && !isNaN(d) && localDate(d) === fokus; });
-    if(!otoRows.length){ $('#ioErr').textContent = 'Tidak ada baris Otomax untuk tanggal ' + fokus + '.'; return; }
+    if(!otoRows.length) return null;
   }
-
   const parsed = {
-    BRI:     src.bri.trim()  ? parseBankBRI(src.bri)      : null,
-    BCA:     src.bca.trim()  ? parseBankBCA(src.bca)      : null,
-    MANDIRI: src.mdr.trim()  ? parseBankMandiri(src.mdr)  : null,
+    BRI:     (src.bri||'').trim()  ? parseBankBRI(src.bri)      : null,
+    BCA:     (src.bca||'').trim()  ? parseBankBCA(src.bca)      : null,
+    MANDIRI: (src.mdr||'').trim()  ? parseBankMandiri(src.mdr)  : null,
   };
   if(fokus) Object.values(parsed).forEach(p => { if(p) p.rows = filterRowsByDate(p.rows, fokus); });
   let qrisRows = null;
-  if(src.qris.trim()){
-    if(isBcaQrisCsv(src.qris))      qrisRows = { mode:'merchant', rows: parseBcaQrisCsv(src.qris) };
+  if((src.qris||'').trim()){
+    if(isBcaQrisCsv(src.qris))      qrisRows = { mode:'merchant', rows: parseBcaQrisCsv(src.qris, fokus) };
     else if(isBcaMerchant(src.qris)) qrisRows = { mode:'merchant', rows: parseBcaMerchant(src.qris) };
     else                             qrisRows = { mode:'otomax',   rows: parseOtomax(src.qris) };
   }
-
   const bankRes = BANKS.map(b => reconcileBank(b, otoRows, parsed[b]));
   crossBank(bankRes);
   const qris = reconcileQris(otoRows, qrisRows);
+  return { otoRows, parsed, bankRes, qris, fokusTanggal:fokus };
+}
 
-  STATE = { otoRows, parsed, bankRes, qris, fokusTanggal:fokus, recordId: opts.recordId || null };
+function analyse(src, persist, opts){
+  opts = opts || {};
+  const fokus = opts.fokusTanggal || null;
+  const res = computeAnalysis(src, fokus);
+  if(!res){ $('#ioErr').textContent = fokus ? 'Tidak ada baris Otomax untuk tanggal ' + fokus + '.' : 'Data Otomax tidak terbaca. Pastikan kolom dipisah TAB.'; return; }
+  $('#ioErr').textContent = '';
+
+  STATE = { ...res, recordId: opts.recordId || null };
   if(persist !== false){
     store(LS.oto, src.oto); store(LS.bri, src.bri); store(LS.bca, src.bca); store(LS.mdr, src.mdr); store(LS.qris, src.qris);
   }
@@ -1655,13 +1675,15 @@ $('#tabs').addEventListener('click', e => {
 });
 
 /* ---------- menu bar / view switching ---------- */
-const VIEWS = ['import','rekon','pengaturan'];
+const VIEWS = ['dashboard','import','rekon','pengaturan'];
 function showView(name){
   if(!VIEWS.includes(name)) name = 'import';
+  if(name === 'dashboard' && !bisaSimpan()) name = 'import';
   VIEWS.forEach(v => { $('#view-' + v).hidden = (v !== name); });
   $('#mainnav').querySelectorAll('.navbtn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   if(name === 'rekon'){ $('#rekonEmpty').hidden = !!STATE; $('#rekonReady').hidden = !STATE; }
   if(name === 'import' && SERVER_OK && !(AUTH.authRequired && !AUTH.authed) && typeof refreshHist === 'function') refreshHist();
+  if(name === 'dashboard') renderDashboard();
   if(name === 'pengaturan') renderPengaturan();
   if(location.hash.slice(1) !== name) history.replaceState(null, '', '#' + name);
   window.scrollTo(0, 0);
@@ -1690,6 +1712,7 @@ function updateImportButtons(){
   $('#runBtn').textContent = s ? 'Simpan ke database' : 'Analisa data';
   $('#saveNote').hidden = !s;
   $('#savedBlock').hidden = !s;
+  $('#navDashboard').hidden = !s;
   $('#importLead').hidden = false;
 }
 
@@ -1967,9 +1990,10 @@ const SRV = {
 
 function localDate(d){ const x = new Date(d.getTime() - d.getTimezoneOffset()*60000); return x.toISOString().slice(0,10); }
 
-function serverRingkasan(){
-  if(!STATE) return {};
-  const { otoRows, bankRes, qris } = STATE;
+function serverRingkasan(st){
+  st = st || STATE;
+  if(!st) return {};
+  const { otoRows, bankRes, qris } = st;
   const banks = {};
   bankRes.forEach(r => {
     if(r.noSource) return;
@@ -1984,19 +2008,24 @@ function serverRingkasan(){
     g.n++; if(r.arah === 'masuk') g.masuk += r.jumlah; if(r.arah === 'biaya') g.admin += r.jumlah;
     by.set(k, g);
   });
+  const qc = qris.noSource ? [] : qris.oto.filter(o=>o.status==='cocok');
+  const qs = qris.noSource ? [] : qris.oto.filter(o=>o.status==='selisih');
   return {
     dianalisa: true,
-    fokusTanggal: STATE.fokusTanggal || null,
+    fokusTanggal: st.fokusTanggal || null,
     perTanggal: [...by.values()].sort((a,b) => a.tgl < b.tgl ? -1 : 1),
     otoN: otoRows.length,
     masuk: otoRows.filter(r=>r.arah==='masuk').reduce((s,r)=>s+r.jumlah,0),
+    tarikTunai: otoRows.filter(r=>(r.cat||'').startsWith('Tarik Tunai')).reduce((s,r)=>s+r.jumlah,0),
     admin: otoRows.filter(r=>r.arah==='biaya').reduce((s,r)=>s+r.jumlah,0),
     banks,
     qris: qris.noSource ? null : {
-      cocokN: qris.oto.filter(o=>o.status==='cocok').length,
-      selisihN: qris.oto.filter(o=>o.status==='selisih').length,
+      cocokN: qc.length,
+      selisihN: qs.length,
       tidakN: qris.oto.filter(o=>o.status==='tidak_ada').length,
       unN: qris.unmatched.length,
+      masuk: qc.reduce((a,o)=>a+(o.qris||0),0) + qs.reduce((a,o)=>a+(o.qris||0),0) + qris.unmatched.reduce((a,q)=>a+(q.jumlah||0),0),
+      unSum: qris.unmatched.reduce((a,q)=>a+(q.jumlah||0),0) + qris.oto.filter(o=>o.status==='tidak_ada').reduce((a,o)=>a+(o.jumlah||0),0),
     },
   };
 }
@@ -2105,6 +2134,137 @@ async function loadSnapshot(id){
   }catch(err){ toast(err.message); }
 }
 
+/* ---------- dashboard per tanggal ---------- */
+// Analisa satu record tanpa pindah halaman, simpan ringkasan lengkap ke record.
+async function analisaRecord(id){
+  const snap = await SRV.get(id);
+  const res = computeAnalysis(snap.sumber || {}, (snap.ringkasan && snap.ringkasan.fokusTanggal) || null);
+  if(!res) return false;
+  await SRV.patch(id, { ringkasan: serverRingkasan(res) });
+  return true;
+}
+// Angka dashboard dari ringkasan tersimpan.
+function dashMetrics(s){
+  if(!s) return null;
+  const otomax = s.masuk || 0;
+  if(!(s.dianalisa || s.banks)) return { analysed:false, otomax };
+  let bank = 0, belum = 0, tanpaBukti = 0;
+  Object.values(s.banks || {}).forEach(v => { bank += v.kredit || 0; belum += v.unSum || 0; tanpaBukti += v.tidakSum || 0; });
+  if(s.qris){ bank += s.qris.masuk || 0; belum += s.qris.unSum || 0; }
+  return { analysed:true, bank, otomax, selisih: bank - otomax, perluDicek: belum + tanpaBukti };
+}
+
+// 7 tanggal ke belakang, di-anchor ke data terbaru (biar dashboard nggak kosong kalau
+// import-nya telat), tapi tak pernah lewat hari ini.
+function dashHari(rows){
+  const kini = localDate(new Date());
+  let anchor = kini;
+  if(rows.length){
+    const terbaru = rows.map(r => r.tanggal).filter(t => /^\d{4}-\d{2}-\d{2}$/.test(t)).sort().pop();
+    if(terbaru && terbaru < kini) anchor = terbaru;
+  }
+  const base = new Date(anchor + 'T00:00:00'), out = [];
+  for(let i = 0; i < 7; i++){ const d = new Date(base); d.setDate(d.getDate() - i); out.push(localDate(d)); }
+  return out;
+}
+
+async function renderDashboard(){
+  const body = $('#dashBody');
+  if(!bisaSimpan()){ body.innerHTML = '<div class="empty-view">Dashboard butuh server + login.</div>'; return; }
+  let rows;
+  try{ rows = await SRV.list(); }
+  catch(err){ if(/login/i.test(err.message)) showLogin(); body.innerHTML = '<div class="empty-view">Gagal memuat.</div>'; return; }
+
+  const byTgl = new Map();
+  rows.forEach(r => { if(!byTgl.has(r.tanggal)) byTgl.set(r.tanggal, r); });   // list sudah urut terbaru dulu
+  const hari = dashHari(rows);
+
+  const belumN = hari.filter(k => byTgl.get(k) && !dashMetrics(byTgl.get(k).ringkasan).analysed).length;
+  $('#dashAnalisaAll').hidden = !belumN;
+  $('#dashAnalisaAll').textContent = 'Analisa ' + belumN + ' hari yang belum';
+
+  const kini = localDate(new Date());
+  const rangeCap = el('p','hint'); rangeCap.style.margin = '0 0 10px';
+  rangeCap.textContent = tglS(new Date(hari[6] + 'T00:00:00')) + ' – ' + tglS(new Date(hari[0] + 'T00:00:00'))
+    + (hari[0] < kini ? '  (di-anchor ke data terbaru)' : '');
+
+  const card = el('div','card');
+  const sc = el('div','tbl-scroll'); const tb = el('table','xtable');
+  tb.innerHTML = '<thead><tr><th>Tanggal</th><th class="n">Uang masuk (bank)</th><th class="n">Otomax</th><th class="n">Selisih</th><th class="n">Perlu dicek</th><th></th></tr></thead>';
+  const tbody = el('tbody');
+  let tB = 0, tO = 0, tS = 0, tP = 0;
+
+  hari.forEach(k => {
+    const rec = byTgl.get(k);
+    const dt = new Date(k + 'T00:00:00');
+    const tr = el('tr');
+    const tglCell = Object.assign(el('td'), { innerHTML: '<b>' + tglS(dt) + '</b>' });
+    if(!rec){
+      tr.append(tglCell,
+        Object.assign(el('td','n'), { textContent:'—' }),
+        Object.assign(el('td','n'), { textContent:'—' }),
+        Object.assign(el('td','n'), { textContent:'—' }),
+        Object.assign(el('td','n'), { textContent:'—' }),
+        Object.assign(el('td'), { innerHTML:'<span class="hint">belum ada data</span>' }));
+      tr.style.opacity = '.55';
+      tbody.append(tr); return;
+    }
+    const m = dashMetrics(rec.ringkasan);
+    tr.style.cursor = 'pointer';
+    tr.onclick = () => loadSnapshot(rec.id);
+    if(!m.analysed){
+      tr.append(tglCell,
+        Object.assign(el('td','n'), { innerHTML:'<span class="hint">belum dianalisa</span>' }),
+        Object.assign(el('td','n'), { textContent: rp(m.otomax) }),
+        Object.assign(el('td','n'), { textContent:'—' }),
+        Object.assign(el('td','n'), { textContent:'—' }));
+      const act = el('td');
+      const b = el('button','mini','Analisa'); b.onclick = async e => { e.stopPropagation(); b.textContent = '…'; b.disabled = true; await analisaRecord(rec.id); renderDashboard(); };
+      act.append(b); tr.append(act);
+      tO += m.otomax;
+      tbody.append(tr); return;
+    }
+    tB += m.bank; tO += m.otomax; tS += m.selisih; tP += m.perluDicek;
+    const selCell = el('td','n');
+    if(m.selisih === 0) selCell.innerHTML = '<span class="pos">Rp0 ✓</span>';
+    else selCell.innerHTML = '<span class="' + (m.selisih < 0 ? 'neg' : 'warn') + '">' + (m.selisih > 0 ? '+' : '−') + rp(Math.abs(m.selisih)) + '</span>';
+    const chkCell = el('td','n');
+    chkCell.innerHTML = m.perluDicek === 0 ? '<span class="pos">✓</span>' : '<span class="neg">' + rp(m.perluDicek) + '</span>';
+    tr.append(tglCell,
+      Object.assign(el('td','n'), { textContent: rp(m.bank) }),
+      Object.assign(el('td','n'), { textContent: rp(m.otomax) }),
+      selCell, chkCell,
+      Object.assign(el('td'), { innerHTML:'<span class="hint">buka →</span>' }));
+    tbody.append(tr);
+  });
+
+  const tf = el('tr','tf-row');
+  tf.innerHTML = '<td>Total 7 hari</td><td class="n">' + rp(tB) + '</td><td class="n">' + rp(tO) + '</td>'
+    + '<td class="n">' + (tS === 0 ? 'Rp0' : (tS > 0 ? '+' : '−') + rp(Math.abs(tS))) + '</td>'
+    + '<td class="n">' + (tP === 0 ? '✓' : rp(tP)) + '</td><td></td>';
+  tbody.append(tf);
+  tb.append(tbody); sc.append(tb); card.append(sc);
+  body.innerHTML = ''; body.append(rangeCap, card);
+}
+
+$('#dashRefresh').onclick = () => renderDashboard();
+$('#dashAnalisaAll').onclick = async () => {
+  $('#dashMsg').textContent = ''; $('#dashAnalisaAll').disabled = true;
+  try{
+    const rows = await SRV.list();
+    const byTgl = new Map(); rows.forEach(r => { if(!byTgl.has(r.tanggal)) byTgl.set(r.tanggal, r); });
+    const hari = dashHari(rows);
+    let n = 0;
+    for(const k of hari){
+      const rec = byTgl.get(k);
+      if(rec && !dashMetrics(rec.ringkasan).analysed){ try{ await analisaRecord(rec.id); n++; }catch(e){} }
+    }
+    toast(n + ' hari dianalisa');
+    refreshHist();
+  }catch(err){ $('#dashMsg').textContent = err.message; }
+  finally{ $('#dashAnalisaAll').disabled = false; renderDashboard(); }
+};
+
 $('#saveBtn').onclick = () => {
   const show = $('#resbar').hidden;
   $('#resbar').hidden = !show;
@@ -2153,6 +2313,10 @@ async function initServer(){
   if(muat && /^\d+$/.test(muat)){
     history.replaceState(null, '', location.pathname);
     loadSnapshot(muat);
+  } else if(!_initialHash && !STATE && !_draftPending){
+    showView('dashboard');   // halaman pertama = dashboard per tanggal
+  } else if(!$('#view-dashboard').hidden){
+    renderDashboard();
   }
 }
 
@@ -2182,6 +2346,7 @@ $('#tglData').addEventListener('change', async () => {
 });
 
 let _draftPending = false;
+const _initialHash = location.hash.slice(1);   // sebelum boot menstempel hash default
 (function boot(){
   updateImportButtons();
   const savedOto = read(LS.oto);
@@ -2193,8 +2358,7 @@ let _draftPending = false;
     // Mode standalone/artifact: tetap analisa langsung supaya bisa dipakai tanpa DB.
     if(!ONLINE) analyse(inputs(), false); else _draftPending = true;
   }
-  const want = location.hash.slice(1);
-  showView(VIEWS.includes(want) ? want : (STATE ? 'rekon' : 'import'));
+  showView(VIEWS.includes(_initialHash) ? _initialHash : (STATE ? 'rekon' : 'import'));
   if(!STATE) $('#taOto').focus();
 })();
 initServer();

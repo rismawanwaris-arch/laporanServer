@@ -78,6 +78,7 @@ Buka `http://<ip-host>:<HOST_PORT>`. Data persist di `./data` (bind-mount). Heal
 
 | Menu | Isi |
 | --- | --- |
+| **Dashboard** | Halaman pertama (butuh server). Tabel per tanggal, 7 hari terakhir (di-anchor ke data terbaru): **Uang masuk (bank)** = total kredit di rekening (acuan), **Otomax** = total yang Otomax catat masuk, **Selisih** = bank − Otomax, **Perlu dicek** = nilai yang belum tersanding. Tombol **Analisa 7 hari** menghitung semua record yang belum dianalisa sekaligus; klik baris untuk buka analisa lengkap. |
 | **Import Data** | 5 kotak tempel / buka file + **Simpan ke database**. Data mentah langsung disimpan (belum dianalisa), dikelompokkan per tanggal usaha. Kalau isinya beberapa tanggal → pilih **gabung jadi 1 data** atau **pisah per tanggal** (tiap record menganalisa baris & mutasi bank tanggalnya sendiri). Daftar **data tersimpan** di bawah — klik **Analisa** untuk menjalankan rekonsiliasi. |
 | **Rekonsiliasi** | Hasil analisa dari record: kartu angka + tab Perlu perhatian / Ringkasan / Rekonsiliasi / Kategori (termasuk rekap per tanggal) / Per outlet. Tombol **Simpan hasil** untuk menyimpan ulang hasil (setelah ubah sandingan / keputusan audit) ke record yang sama. |
 | **Pengaturan** | Tema · sandingan merchant↔outlet · **konsolidasi nama outlet** (peta `ID agen → nama outlet`, mis. `PLC68 → PLC DM`, dipakai saat mutasi BCA menyebut kode tapi Otomax mencatat deposit dengan nama) · keputusan audit manual · akun (login / ganti password) · link Kelola DB · hapus data lokal. |
