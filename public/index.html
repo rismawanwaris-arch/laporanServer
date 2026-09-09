@@ -606,6 +606,7 @@ const CAT_RULES = [
   [/^ADMIN\s+TARTUN\s+TGL/i,        'Admin Tartun (potongan harian)',      'biaya'],
   [/^ADMIN\s+TF\s+EDC/i,            'Admin TF EDC',                        'biaya'],
   [/^ADMIN\b/i,                     'Admin lainnya',                       'biaya'],
+  [/^REV\s+(AMBIL\s+)?STOR[.\s]/i,  'REV Storan (koreksi)',                'koreksi'],
   [/^AMBIL\s+STOR/i,                'Ambil Storan (uang keluar)',          'keluar'],
   [/^STOR[.\s]/i,                   'Storan Masuk (modal / stok)',         'masuk'],
   [/^BAYAR\s+KE\s+/i,               'Bayar ke Bank',                       'masuk'],
@@ -899,9 +900,25 @@ function bankStats(r){
 }
 
 /* ---------- tiles ---------- */
+// Rekap storan kas per kolektor (IZZUL / ANDRI / WISNU …), dari keterangan "STOR <nama>" / "AMBIL STOR <nama>".
+function storanAgg(rows){
+  const m = new Map();
+  rows.forEach(r => {
+    const mm = String(r.ket).match(/^(REV\s+)?(AMBIL\s+)?STOR[.\s]+([A-Za-z]+)/i);
+    if(!mm) return;
+    const nm = mm[3].toUpperCase();
+    const g = m.get(nm) || { nama:nm, stor:0, ambil:0, n:0 };
+    g.n++;
+    if(mm[2]) g.ambil += r.jumlah; else g.stor += r.jumlah;
+    m.set(nm, g);
+  });
+  return [...m.values()].map(g => ({ ...g, net: g.stor + g.ambil })).sort((a,b) => b.n - a.n);
+}
 function renderTiles(){
   const { otoRows, bankRes, qris } = STATE;
-  const masuk = otoRows.filter(r => r.arah === 'masuk').reduce((s,r) => s + r.jumlah, 0);
+  const tarikTunai = otoRows.filter(r => (r.cat || '').startsWith('Tarik Tunai')).reduce((s,r) => s + r.jumlah, 0);
+  const tarikN = otoRows.filter(r => (r.cat || '').startsWith('Tarik Tunai')).length;
+  const storNet = storanAgg(otoRows).reduce((s,g) => s + g.net, 0);
   const admin = otoRows.filter(r => r.arah === 'biaya').reduce((s,r) => s + r.jumlah, 0);
   const ds = otoRows.map(r => r.d).filter(d => !isNaN(d)).sort((a,b) => a - b);
   const range = ds.length ? (tglS(ds[0]) === tglS(ds[ds.length-1]) ? tglS(ds[0]) : tglS(ds[0]) + ' – ' + tglS(ds[ds.length-1])) : '—';
@@ -925,7 +942,8 @@ function renderTiles(){
 
   const tiles = [
     { k:'Transaksi Otomax', v:fmt(otoRows.length), s:range, cls:'' },
-    { k:'Uang masuk (tarik tunai dll)', v:rp(masuk), s:otoRows.filter(r=>r.arah==='masuk').length + ' transaksi', cls:'' },
+    { k:'Tarik tunai (Otomax)', v:rp(tarikTunai), s:fmt(tarikN) + ' transaksi', cls:'' },
+    { k:'Storan kas (net)', v:rp(storNet), s: storNet < 0 ? 'lebih banyak diambil' : storNet > 0 ? 'lebih banyak disetor' : 'seimbang', cls: storNet < 0 ? 'warn' : '' },
     { k:'Potongan admin', v:rp(admin), s:otoRows.filter(r=>r.arah==='biaya').length + ' potongan', cls:'warn' },
   ];
   if(hasRec){
@@ -982,6 +1000,25 @@ function renderRingkasan(){
     const sc = el('div','tbl-scroll'); sc.append(tb); p.append(sc);
     const dbTot = active.reduce((s,r)=>s+bankStats(r).debSum,0);
     if(dbTot < 0) p.append(Object.assign(el('p','lead'), { style:'margin-top:-6px', textContent:'Transaksi keluar / debit (tidak diperhitungkan): ' + rp(dbTot) + '. Lihat rincian di tab Rekonsiliasi.' }));
+  }
+
+  // Storan kas per kolektor
+  const stor = storanAgg(otoRows);
+  if(stor.length){
+    const sc = el('div','card');
+    sc.append(Object.assign(el('div','card-h'), { innerHTML:'<h3>Storan kas — per kolektor</h3>' }));
+    const tbl = el('table','xtable');
+    tbl.innerHTML = '<thead><tr><th>Kolektor</th><th class="n">Trx</th><th class="n">Storan masuk</th><th class="n">Ambil storan</th><th class="n">Net</th></tr></thead>';
+    const bdy = el('tbody'); let tS = 0, tA = 0, tN = 0;
+    stor.forEach(g => {
+      tS += g.stor; tA += g.ambil; tN += g.n;
+      bdy.append(rowHTML([g.nama, fmt(g.n), g.stor ? rp(g.stor) : '·', g.ambil ? rp(g.ambil) : '·',
+        '<span class="' + (g.net < 0 ? 'neg' : 'pos') + '">' + rp(g.net) + '</span>']));
+    });
+    const tf = el('tr','tf-row');
+    tf.innerHTML = '<td>Total</td><td class="n">' + fmt(tN) + '</td><td class="n">' + rp(tS) + '</td><td class="n">' + rp(tA) + '</td><td class="n">' + rp(tS + tA) + '</td>';
+    bdy.append(tf); tbl.append(bdy);
+    const w = el('div','tbl-scroll'); w.append(tbl); sc.append(w); p.append(sc);
   }
 
   // flags — urutan: setoran bank yang belum tercatat (paling penting) dulu, baru catatan Otomax tanpa bukti
