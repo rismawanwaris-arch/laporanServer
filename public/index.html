@@ -1073,9 +1073,17 @@ function qrisBlock(q){
   const cocok = q.oto.filter(o => o.status === 'cocok');
   const selisih = q.oto.filter(o => o.status === 'selisih');
   const tidak = q.oto.filter(o => o.status === 'tidak_ada');
+  // Tanggal yang tertera di keterangan baris QR BULK (biasanya H-1 dari jam entri)
+  const bulkTgl = [...new Set(q.oto.map(o => { const d = tanggalUsaha(o); return d && !isNaN(d) ? tglS(d) : null; }).filter(Boolean))];
   const head = el('div','bank-head');
-  head.innerHTML = LBL + ' <span class="st">' + q.oto.length + ' outlet QR BULK di Otomax · ' + q.unmatched.length + ' baris ' + LBL + ' belum tersanding</span>';
+  head.innerHTML = LBL
+    + (bulkTgl.length ? ' <span class="st" style="color:var(--accent-ink)">QR BULK untuk ' + bulkTgl.join(' & ') + '</span>' : '')
+    + ' <span class="st">' + q.oto.length + ' outlet di Otomax · ' + q.unmatched.length + ' baris ' + LBL + ' belum tersanding</span>';
   wrap.append(head);
+  if(bulkTgl.length){
+    wrap.append(Object.assign(el('p','hint'), { style:'margin:-6px 0 12px',
+      textContent: 'Cocokkan dengan settlement ' + LBL + ' tanggal ' + bulkTgl.join(' / ') + ' (bukan tanggal input).' }));
+  }
   const chips = el('div','chips');
   const chip = (cls,label,n) => { const c = el('span','chip ' + cls); c.innerHTML = label + ' <span class="num">' + n + '</span>'; return c; };
   chips.append(
