@@ -1889,8 +1889,11 @@ $('#filePick').onchange = async e => {
   if(!f || !target) return;
   try{
     if(/\.xlsx$/i.test(f.name)){
-      // Report Merchant BCA = workbook multi-sheet; yang dipakai hanya lembar SUMMARY.
-      const opts = target === 'taQris' ? { preferSheet:'SUMMARY' } : {};
+      // Report Merchant BCA = workbook multi-sheet → pakai lembar SUMMARY.
+      // Ekspor Otomax → pakai lembar "Otomax" (fallback: lembar pertama).
+      const opts = target === 'taQris' ? { preferSheet:'SUMMARY' }
+                 : target === 'taOto'  ? { preferSheet:'Otomax' }
+                 : {};
       $('#' + target).value = xlsxToTsv(await f.arrayBuffer(), opts);
     } else {
       $('#' + target).value = await f.text();
