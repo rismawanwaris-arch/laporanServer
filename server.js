@@ -11,8 +11,9 @@ const express = require("express");
 const db = require("./db");
 
 const PORT = Number(process.env.PORT || 3000);
-const PASSWORD = process.env.APP_PASSWORD || "";
-const AUTH_ON = PASSWORD.length > 0;
+// Password: yang tersimpan di DB menang, kalau kosong pakai env APP_PASSWORD. Bisa diubah lewat /api/password.
+let PASSWORD = db.getSetting("app_password") || process.env.APP_PASSWORD || "";
+let AUTH_ON = PASSWORD.length > 0;
 
 const app = express();
 app.disable("x-powered-by");
@@ -59,6 +60,28 @@ app.post("/api/login", (req, res) => {
 app.post("/api/logout", (req, res) => {
   const tok = parseCookies(req.headers.cookie).sid;
   if (tok) sessions.delete(tok);
+  res.setHeader("Set-Cookie", "sid=; HttpOnly; Path=/; Max-Age=0");
+  res.json({ ok: true });
+});
+
+// Ganti / set password. Kalau auth sedang ON, wajib login + password lama benar.
+// Kalau auth OFF, siapa pun bisa set password awal untuk mengaktifkan login.
+app.post("/api/password", (req, res) => {
+  const b = req.body || {};
+  const baru = String(b.baru || "");
+  if (baru.length < 4)
+    return res.status(400).json({ error: "Password baru minimal 4 karakter." });
+  if (AUTH_ON) {
+    if (!authed(req)) return res.status(401).json({ error: "Perlu login." });
+    const a = Buffer.from(String(b.current || ""));
+    const c = Buffer.from(PASSWORD);
+    if (a.length !== c.length || !crypto.timingSafeEqual(a, c))
+      return res.status(401).json({ error: "Password saat ini salah." });
+  }
+  db.setSetting("app_password", baru);
+  PASSWORD = baru;
+  AUTH_ON = true;
+  sessions.clear(); // semua sesi lama batal — wajib login ulang
   res.setHeader("Set-Cookie", "sid=; HttpOnly; Path=/; Max-Age=0");
   res.json({ ok: true });
 });

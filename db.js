@@ -25,6 +25,7 @@ db.exec(`
   )
 `);
 db.exec("CREATE INDEX IF NOT EXISTS idx_snapshots_tanggal ON snapshots(tanggal DESC, id DESC)");
+db.exec("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
 
 const q = {
   insert: db.prepare(
@@ -40,6 +41,8 @@ const q = {
   del: db.prepare("DELETE FROM snapshots WHERE id = ?"),
   delAll: db.prepare("DELETE FROM snapshots"),
   count: db.prepare("SELECT COUNT(*) AS n FROM snapshots"),
+  getSetting: db.prepare("SELECT v FROM settings WHERE k = ?"),
+  setSetting: db.prepare("INSERT INTO settings (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v"),
   span: db.prepare("SELECT MIN(tanggal) AS min, MAX(tanggal) AS max FROM snapshots"),
 };
 
@@ -124,6 +127,14 @@ module.exports = {
       dibuat_pada: r.dibuat_pada,
       sumber_bytes: r.sumber_bytes,
     }));
+  },
+
+  getSetting(k) {
+    const r = q.getSetting.get(String(k));
+    return r ? r.v : null;
+  },
+  setSetting(k, v) {
+    q.setSetting.run(String(k), String(v));
   },
 
   /** Checkpoint WAL ke file utama lalu tutup — dipanggil saat server berhenti,

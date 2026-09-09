@@ -58,13 +58,22 @@ Data persist di `./data` (bind-mount). Health check: `GET /healthz`.
 | `PATCH /api/snapshots/:id`  | `{ tanggal?, catatan? }` → ubah                    |
 | `DELETE /api/snapshots/:id` | hapus satu                                         |
 | `POST /api/snapshots/hapus-semua` | `{ konfirmasi: "HAPUS SEMUA" }` → kosongkan  |
+| `POST /api/password`        | `{ current?, baru }` → set / ganti password (disimpan di DB, menang atas `APP_PASSWORD`) |
 
-## Halaman
+## Halaman & menu
 
-| Path      | Isi                                                                   |
-| --------- | -------------------------------------------------------------------- |
-| `/`       | Alat rekonsiliasi + panel Riwayat + tombol Simpan                    |
-| `/kelola` | Kelola Data: tabel semua snapshot, edit tanggal/catatan, lihat detail (teks mentah), hapus satu / hapus semua, info ukuran DB |
+`/` — satu halaman dengan menu bar di header:
+
+| Menu | Isi |
+| --- | --- |
+| **Import Data** | 5 kotak tempel + Analisa. Selesai → pindah ke Rekonsiliasi. |
+| **Rekonsiliasi** | Hasil: kartu angka + tab Ringkasan / Rekonsiliasi / Kategori / Per outlet + tombol Simpan. |
+| **Riwayat** | Daftar snapshot tersimpan (muncul kalau server aktif). |
+| **Pengaturan** | Tema · sandingan merchant↔outlet · akun (login / ganti password) · link Kelola DB · hapus data lokal. |
+
+Header juga memuat **pemilih tanggal data** (dipakai saat Simpan) dan toggle tema.
+
+`/kelola` — halaman terpisah: tabel semua snapshot, edit tanggal/catatan, lihat detail (teks mentah), hapus satu / hapus semua, info ukuran DB.
 
 Satu *snapshot* menyimpan teks mentah yang ditempel (Otomax + tiap bank) plus ringkasan angka,
 jadi bisa dimuat ulang kapan saja lewat tombol **Muat** di panel Riwayat.

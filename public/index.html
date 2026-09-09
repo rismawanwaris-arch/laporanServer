@@ -50,16 +50,43 @@ h1,h2,h3{font-family:"Spectral",Georgia,serif; font-weight:600; margin:0; text-w
 a{color:var(--accent-ink)}
 
 header{position:sticky; top:0; z-index:20; background:var(--paper); border-bottom:1px solid var(--line-soft)}
-.hbar{display:flex; align-items:baseline; gap:10px; padding:11px 20px; max-width:1160px; margin:0 auto}
-.brand{margin-right:auto; display:flex; align-items:baseline; gap:9px}
+.hbar{display:flex; align-items:center; gap:8px 14px; padding:9px 20px; max-width:1160px; margin:0 auto; flex-wrap:wrap}
+.brand{display:flex; align-items:baseline; gap:8px}
 .brand b{font-family:"Spectral",serif; font-weight:700; font-size:18px; letter-spacing:.02em}
 .brand span{font-size:11.5px; color:var(--ink-faint); letter-spacing:.02em}
-@media(max-width:560px){ .brand span{display:none} }
+@media(max-width:720px){ .brand span{display:none} }
 .hbtn{font:inherit; font-size:13px; padding:7px 12px; border-radius:8px; cursor:pointer; border:1px solid var(--line); background:var(--raise); color:var(--ink-soft)}
 .hbtn:hover{border-color:var(--accent); color:var(--accent-ink)}
 .hbtn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 .hbtn.icon{padding:7px 10px; font-size:15px; line-height:1}
-.step{display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--accent); color:#fff; font-family:"IBM Plex Sans",sans-serif; font-size:12px; font-weight:600; flex:none}
+
+.mainnav{display:flex; gap:2px; flex-wrap:wrap}
+.navbtn{font:inherit; font-size:13.5px; font-weight:500; padding:7px 13px; border-radius:8px; cursor:pointer; border:1px solid transparent; background:none; color:var(--ink-soft)}
+.navbtn:hover{color:var(--ink); background:var(--surface-2)}
+.navbtn.active{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600}
+.navbtn:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.hspace{flex:1 1 auto}
+.hdate input{font:inherit; font-size:13px; padding:6px 10px; border-radius:8px; border:1px solid var(--line); background:var(--raise); color:var(--ink); font-family:"IBM Plex Mono",monospace}
+.hdate input:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent)}
+
+.view>h2{font-size:20px; margin-bottom:4px}
+.view>.lead{color:var(--ink-soft); font-size:13.5px; margin:0 0 20px}
+.empty-view{text-align:center; color:var(--ink-faint); font-size:14px; padding:60px 20px; border:1px dashed var(--line); border-radius:var(--radius)}
+.linklike{font:inherit; font-size:inherit; background:none; border:none; color:var(--accent-ink); cursor:pointer; text-decoration:underline; padding:0}
+
+.setgroup{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; margin-bottom:16px}
+.setgroup h3{font-size:14px; margin:0 0 10px}
+.setgroup .hint{margin:0 0 12px}
+.setgroup label{display:block; font-size:12px; color:var(--ink-soft); font-weight:600; margin:10px 0 4px}
+.setgroup input[type=password]{font:inherit; font-size:13px; padding:7px 10px; border-radius:7px; border:1px solid var(--line); background:var(--paper); color:var(--ink); width:min(280px,100%)}
+.segmented{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+.segmented button{font:inherit; font-size:13px; padding:7px 14px; border:none; background:var(--raise); color:var(--ink-soft); cursor:pointer; border-right:1px solid var(--line)}
+.segmented button:last-child{border-right:none}
+.segmented button.active{background:var(--accent); color:#fff; font-weight:600}
+.map-row{display:flex; gap:12px; align-items:baseline; flex-wrap:wrap; padding:8px 0; border-bottom:1px solid var(--line-soft); font-size:13px}
+.map-row .mm{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-faint)}
+.map-row .mo{font-weight:600}
+.map-row .exp-btn{margin-left:auto}
 
 main{padding-top:22px; padding-bottom:80px}
 .banner{display:flex; gap:10px; align-items:flex-start; font-size:13.5px; background:var(--warn-soft); border:1px solid var(--warn-line); color:var(--warn); border-radius:8px; padding:10px 13px; margin-bottom:18px}
@@ -198,84 +225,139 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
 <header>
   <div class="hbar">
     <div class="brand"><b>Rekap Tartun</b><span>mutasi bank &times; Otomax</span></div>
-    <button class="hbtn" id="histBtn" hidden>Riwayat</button>
+    <nav class="mainnav" id="mainnav">
+      <button class="navbtn" data-view="import">Import Data</button>
+      <button class="navbtn" data-view="rekon">Rekonsiliasi</button>
+      <button class="navbtn" data-view="riwayat" hidden>Riwayat</button>
+      <button class="navbtn" data-view="pengaturan">Pengaturan</button>
+    </nav>
+    <span class="hspace"></span>
+    <label class="hdate" title="Tanggal data yang sedang dikerjakan">📅 <input type="date" id="tglData"></label>
     <button class="hbtn icon" id="themeBtn" title="Ganti tema terang / gelap" aria-label="Ganti tema">◐</button>
-    <button class="hbtn" id="logoutBtn" hidden>Keluar</button>
   </div>
 </header>
 
 <main class="wrap">
-  <details class="io" id="io" open>
-    <summary><span class="step">1</span> Tempel data <span class="io-meta" id="ioMeta"></span></summary>
-    <div class="io-body">
-      <div class="field">
-        <label for="taOto">1 · Data Otomax <span class="opt">— Mutasi Reseller, wajib</span></label>
-        <textarea id="taOto" spellcheck="false" placeholder="Tempel di sini. Kolom dipisah TAB: Tanggal · Nama Reseller · Jumlah · Keterangan"></textarea>
-        <div class="hint">Ekspor dari Otomax → Laporan → Mutasi Reseller, copy seluruh baris (boleh dengan baris judul).</div>
+  <!-- ========== IMPORT DATA ========== -->
+  <section class="view" id="view-import">
+    <h2>Import data</h2>
+    <p class="lead">Tempel data mentah di bawah lalu klik <b>Analisa data</b>. Hasilnya muncul di menu <b>Rekonsiliasi</b>.</p>
+    <div class="field">
+      <label for="taOto">1 · Data Otomax <span class="opt">— Mutasi Reseller, wajib</span></label>
+      <textarea id="taOto" spellcheck="false" placeholder="Tempel di sini. Kolom dipisah TAB: Tanggal · Nama Reseller · Jumlah · Keterangan"></textarea>
+      <div class="hint">Ekspor dari Otomax → Laporan → Mutasi Reseller, copy seluruh baris (boleh dengan baris judul).</div>
+    </div>
+    <div class="io-banks">
+      <div class="field sm">
+        <label for="taBri">2 · Mutasi BRI <span class="opt">— format BRImo</span></label>
+        <textarea id="taBri" spellcheck="false" placeholder="3 baris per transaksi: keterangan / + Rp… / tanggal jam"></textarea>
       </div>
-      <div class="io-banks">
-        <div class="field sm">
-          <label for="taBri">2 · Mutasi BRI <span class="opt">— format BRImo</span></label>
-          <textarea id="taBri" spellcheck="false" placeholder="3 baris per transaksi: keterangan / + Rp… / tanggal jam"></textarea>
-        </div>
-        <div class="field sm">
-          <label for="taBca">3 · Mutasi BCA <span class="opt">— e-statement</span></label>
-          <textarea id="taBca" spellcheck="false" placeholder="Tgl / Keterangan / Cabang / Jumlah / Saldo (apa adanya). Uang keluar hanya ditampilkan."></textarea>
-        </div>
-        <div class="field sm">
-          <label for="taMdr">4 · Mutasi Mandiri <span class="opt">— Livin</span></label>
-          <textarea id="taMdr" spellcheck="false" placeholder="Date / Remark / Reference / Debit / Credit / Balance"></textarea>
-        </div>
-        <div class="field sm">
-          <label for="taQris">5 · QRIS BCA / BCA Merchant <span class="opt">— settlement, opsional</span></label>
-          <textarea id="taQris" spellcheck="false" placeholder="Tempel settlement BCA Merchant (Merchant Name · Merchant ID · Total Frequency · Total Amount) — atau file lama format Otomax. Dicocokkan per outlet dengan baris TARTUN QR BULK."></textarea>
-        </div>
+      <div class="field sm">
+        <label for="taBca">3 · Mutasi BCA <span class="opt">— e-statement</span></label>
+        <textarea id="taBca" spellcheck="false" placeholder="Tgl / Keterangan / Cabang / Jumlah / Saldo (apa adanya). Uang keluar hanya ditampilkan."></textarea>
       </div>
-      <div class="io-actions">
-        <button class="btn-primary" id="runBtn">Analisa data</button>
-        <button class="btn-ghost" id="clearData">Kosongkan</button>
-        <span class="err" id="ioErr"></span>
+      <div class="field sm">
+        <label for="taMdr">4 · Mutasi Mandiri <span class="opt">— Livin</span></label>
+        <textarea id="taMdr" spellcheck="false" placeholder="Date / Remark / Reference / Debit / Credit / Balance"></textarea>
+      </div>
+      <div class="field sm">
+        <label for="taQris">5 · QRIS BCA / BCA Merchant <span class="opt">— settlement, opsional</span></label>
+        <textarea id="taQris" spellcheck="false" placeholder="Tempel settlement BCA Merchant (Merchant Name · Merchant ID · Total Frequency · Total Amount) — atau file lama format Otomax. Dicocokkan per outlet dengan baris TARTUN QR BULK."></textarea>
       </div>
     </div>
-  </details>
+    <div class="io-actions">
+      <button class="btn-primary" id="runBtn">Analisa data</button>
+      <button class="btn-ghost" id="clearData">Kosongkan</button>
+      <span class="err" id="ioErr"></span>
+    </div>
+  </section>
 
-  <details class="io" id="histBox" hidden>
-    <summary>Riwayat tersimpan <span class="io-meta" id="histMeta"></span></summary>
-    <div class="io-body">
-      <p class="hint" style="margin-top:12px">Hasil analisa yang pernah disimpan. Klik <b>Muat</b> untuk menampilkan lagi data suatu hari.</p>
-      <div id="histList" class="hist-list"></div>
-      <div class="io-actions">
-        <button class="btn-ghost" id="histRefresh">Muat ulang daftar</button>
-        <a class="btn-ghost" id="kelolaBtn" href="/kelola" style="text-decoration:none">Kelola semua data (edit / hapus / backup) →</a>
+  <!-- ========== REKONSILIASI ========== -->
+  <section class="view" id="view-rekon" hidden>
+    <div class="empty-view" id="rekonEmpty">
+      Belum ada hasil analisa.<br><button class="linklike" id="goImport">Buka Import Data →</button>
+    </div>
+    <div id="rekonReady" hidden>
+      <div class="tabs" role="tablist" id="tabs">
+        <button class="tab" role="tab" data-tab="ringkasan" aria-selected="true">Ringkasan</button>
+        <button class="tab" role="tab" data-tab="rekon" aria-selected="false">Rekonsiliasi</button>
+        <button class="tab" role="tab" data-tab="kategori" aria-selected="false">Kategori</button>
+        <button class="tab" role="tab" data-tab="outlet" aria-selected="false">Per outlet</button>
+        <span class="tabs-spacer"></span>
+        <button class="tab-save" id="saveBtn" hidden>Simpan hasil</button>
+      </div>
+      <div class="resbar" id="resbar" hidden>
+        <input type="text" id="saveNote" placeholder="Catatan untuk tanggal ini (opsional)" maxlength="200">
+        <button class="btn-primary" id="saveGo">Simpan ke server</button>
+        <button class="btn-ghost" id="saveCancel">Batal</button>
+        <span class="err" id="saveMsg"></span>
+      </div>
+      <div class="tiles" id="tiles"></div>
+      <div class="panel" id="p-ringkasan"></div>
+      <div class="panel" id="p-rekon" hidden></div>
+      <div class="panel" id="p-kategori" hidden></div>
+      <div class="panel" id="p-outlet" hidden></div>
+    </div>
+  </section>
+
+  <!-- ========== RIWAYAT ========== -->
+  <section class="view" id="view-riwayat" hidden>
+    <h2>Riwayat tersimpan <span class="io-meta" id="histMeta"></span></h2>
+    <p class="lead">Hasil analisa yang pernah disimpan ke server. Klik <b>Muat</b> untuk membuka lagi data suatu hari.</p>
+    <div id="histList" class="hist-list"></div>
+    <div class="io-actions">
+      <button class="btn-ghost" id="histRefresh">Muat ulang</button>
+      <a class="btn-ghost" href="/kelola" style="text-decoration:none">Kelola semua data (edit / hapus / backup) →</a>
+    </div>
+  </section>
+
+  <!-- ========== PENGATURAN ========== -->
+  <section class="view" id="view-pengaturan" hidden>
+    <h2>Pengaturan</h2>
+    <p class="lead">Preferensi tampilan, sandingan merchant, akun, dan data.</p>
+
+    <div class="setgroup">
+      <h3>Tema</h3>
+      <div class="segmented" id="themeSeg">
+        <button data-theme="light">Terang</button>
+        <button data-theme="dark">Gelap</button>
+        <button data-theme="">Ikuti sistem</button>
       </div>
     </div>
-  </details>
 
-  <section id="results" hidden>
-    <div class="tabs" role="tablist" id="tabs">
-      <button class="tab" role="tab" data-tab="ringkasan" aria-selected="true">Ringkasan</button>
-      <button class="tab" role="tab" data-tab="rekon" aria-selected="false">Rekonsiliasi</button>
-      <button class="tab" role="tab" data-tab="kategori" aria-selected="false">Kategori</button>
-      <button class="tab" role="tab" data-tab="outlet" aria-selected="false">Per outlet</button>
-      <span class="tabs-spacer"></span>
-      <button class="tab-save" id="saveBtn" hidden>Simpan hasil</button>
+    <div class="setgroup">
+      <h3>Sandingan merchant ↔ outlet</h3>
+      <p class="hint">Pasangan Merchant BCA → outlet Otomax yang tersimpan (per Merchant ID). Pasangan baru dibuat otomatis dari tab Rekonsiliasi saat ada merchant yang belum ketemu.</p>
+      <div id="mapList"></div>
+      <button class="btn-ghost" id="mapClear" hidden style="margin-top:10px">Hapus semua sandingan</button>
     </div>
-    <div class="resbar" id="resbar" hidden>
-      <label class="resbar-date">Tanggal data <input type="date" id="saveDate"></label>
-      <input type="text" id="saveNote" placeholder="Catatan (opsional)" maxlength="200">
-      <button class="btn-primary" id="saveGo">Simpan ke server</button>
-      <button class="btn-ghost" id="saveCancel">Batal</button>
-      <span class="err" id="saveMsg"></span>
+
+    <div class="setgroup" id="authGroup" hidden>
+      <h3>Akun</h3>
+      <p class="hint" id="authStatus"></p>
+      <div id="pwForm" hidden>
+        <label id="pwCurWrap" for="pwCur">Password saat ini</label>
+        <input type="password" id="pwCur" autocomplete="current-password">
+        <label for="pwNew">Password baru <span class="opt">(min. 4 karakter)</span></label>
+        <input type="password" id="pwNew" autocomplete="new-password">
+        <div style="margin-top:12px">
+          <button class="btn-primary" id="pwSave">Simpan password</button>
+          <span class="err" id="pwMsg"></span>
+        </div>
+      </div>
+      <button class="btn-ghost" id="logoutBtn" hidden style="margin-top:12px">Keluar</button>
     </div>
-    <div class="tiles" id="tiles"></div>
-    <div class="panel" id="p-ringkasan"></div>
-    <div class="panel" id="p-rekon" hidden></div>
-    <div class="panel" id="p-kategori" hidden></div>
-    <div class="panel" id="p-outlet" hidden></div>
+
+    <div class="setgroup">
+      <h3>Data</h3>
+      <p><a href="/kelola" style="color:var(--accent-ink)">Kelola database di server →</a> <span class="hint">(lihat, edit, hapus, backup semua snapshot)</span></p>
+      <button class="btn-ghost" id="wipeLocal" style="margin-top:6px">Hapus semua data di browser ini</button>
+      <p class="hint" style="margin-top:6px">Menghapus data yang tersimpan lokal di peramban (draft & sandingan merchant). Data di server tidak tersentuh.</p>
+    </div>
   </section>
 </main>
 
-<footer>Semua proses berjalan di browser Anda. Tidak ada data yang dikirim ke mana pun.</footer>
+<footer>Data mentah diproses di peramban. Yang dikirim ke server hanya saat Anda klik “Simpan hasil”.</footer>
 
 <div class="modal" id="modal" hidden>
   <div class="modal-box">
@@ -327,10 +409,14 @@ function tokens(s){
 
 /* ---------- theme ---------- */
 (function(){ const t = read(LS.theme); if(t) document.documentElement.dataset.theme = t; })();
+function setTheme(v){
+  if(v) document.documentElement.dataset.theme = v; else delete document.documentElement.dataset.theme;
+  store(LS.theme, v || null);
+  if(typeof renderPengaturan === 'function' && !$('#view-pengaturan').hidden) renderPengaturan();
+}
 $('#themeBtn').onclick = () => {
   const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  const next = cur === 'dark' ? 'light' : 'dark';
-  document.documentElement.dataset.theme = next; store(LS.theme, next);
+  setTheme(cur === 'dark' ? 'light' : 'dark');
 };
 
 /* ---------- parsers ---------- */
@@ -654,13 +740,12 @@ function analyse(src, persist){
   if(persist !== false){
     store(LS.oto, src.oto); store(LS.bri, src.bri); store(LS.bca, src.bca); store(LS.mdr, src.mdr); store(LS.qris, src.qris);
   }
-  $('#io').open = false;
-  const cnt = bankRes.filter(r => !r.noSource).map(r => r.bank + ' ' + (r.credit.length + r.debit.length)).join(' · ');
-  $('#ioMeta').textContent = otoRows.length + ' baris Otomax' + (cnt ? '  ·  ' + cnt : '') + (qris.noSource ? '' : '  ·  QRIS ' + (STATE.qris.oto.length));
-  $('#results').hidden = false;
+  $('#rekonEmpty').hidden = true;
+  $('#rekonReady').hidden = false;
   renderTiles(); renderRingkasan(); renderKategori(); renderRekon(); renderOutlet();
   $('#tabs').querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.tab === 'ringkasan'));
   ['ringkasan','rekon','kategori','outlet'].forEach(id => $('#p-' + id).hidden = (id !== 'ringkasan'));
+  showView('rekon');
 }
 
 // Analisa ulang tanpa mengubah simpanan (dipakai setelah ubah sandingan merchant), lalu kembali ke tab Rekonsiliasi.
@@ -1135,30 +1220,110 @@ function renderOutlet(){
   tb.append(tbody); sc.append(tb); card.append(sc); p.append(card);
 }
 
-/* ---------- tabs ---------- */
+/* ---------- tabs (di dalam menu Rekonsiliasi) ---------- */
 $('#tabs').addEventListener('click', e => {
   const b = e.target.closest('.tab'); if(!b) return;
   $('#tabs').querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t === b));
   ['ringkasan','rekon','kategori','outlet'].forEach(id => $('#p-' + id).hidden = (id !== b.dataset.tab));
 });
 
+/* ---------- menu bar / view switching ---------- */
+const VIEWS = ['import','rekon','riwayat','pengaturan'];
+function showView(name){
+  if(!VIEWS.includes(name)) name = 'import';
+  VIEWS.forEach(v => { $('#view-' + v).hidden = (v !== name); });
+  $('#mainnav').querySelectorAll('.navbtn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  if(name === 'rekon'){ $('#rekonEmpty').hidden = !!STATE; $('#rekonReady').hidden = !STATE; }
+  if(name === 'riwayat' && typeof refreshHist === 'function') refreshHist();
+  if(name === 'pengaturan') renderPengaturan();
+  if(location.hash.slice(1) !== name) history.replaceState(null, '', '#' + name);
+  window.scrollTo(0, 0);
+}
+$('#mainnav').addEventListener('click', e => {
+  const b = e.target.closest('.navbtn'); if(b) showView(b.dataset.view);
+});
+$('#goImport').onclick = () => showView('import');
+addEventListener('hashchange', () => showView(location.hash.slice(1) || 'import'));
+
 /* ---------- wiring ---------- */
 const inputs = () => ({ oto:$('#taOto').value, bri:$('#taBri').value, bca:$('#taBca').value, mdr:$('#taMdr').value, qris:$('#taQris').value });
 function tampilanKosong(){
   ['taOto','taBri','taBca','taMdr','taQris'].forEach(id => $('#' + id).value = '');
   STATE = null;
-  $('#results').hidden = true;
   $('#resbar').hidden = true;
-  $('#ioMeta').textContent = '';
-  $('#io').open = true;
+  $('#rekonReady').hidden = true;
+  $('#rekonEmpty').hidden = false;
+  showView('import');
   $('#taOto').focus();
 }
 
 $('#runBtn').onclick = () => analyse(inputs());
 $('#clearData').onclick = () => {
-  Object.values(LS).forEach(k => { if(k !== LS.theme && k !== LS.qrisMap) store(k, null); });
+  ['oto','bri','bca','mdr','qris'].forEach(k => store(LS[k], null));
   tampilanKosong();
   toast('Semua kotak dikosongkan (sandingan merchant tetap disimpan)');
+};
+
+/* ---------- pengaturan ---------- */
+function renderPengaturan(){
+  const cur = document.documentElement.dataset.theme || '';
+  $('#themeSeg').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.theme === cur));
+
+  const map = readQrisMap();
+  const keys = Object.keys(map);
+  const ml = $('#mapList'); ml.innerHTML = '';
+  if(!keys.length){ ml.innerHTML = '<p class="hint" style="margin:0">Belum ada sandingan tersimpan.</p>'; }
+  keys.forEach(mid => {
+    const row = el('div','map-row');
+    row.append(
+      Object.assign(el('span','mo'), { textContent: map[mid] }),
+      Object.assign(el('span','mm'), { textContent: 'Merchant ID ' + mid }),
+    );
+    const x = el('button','exp-btn','Hapus');
+    x.onclick = () => { const m = readQrisMap(); delete m[mid]; writeQrisMap(m); renderPengaturan(); if(STATE) reanalyse(); };
+    row.append(x); ml.append(row);
+  });
+  $('#mapClear').hidden = !keys.length;
+
+  const g = $('#authGroup');
+  if(!SERVER_OK){ g.hidden = true; return; }
+  g.hidden = false;
+  if(AUTH.authRequired){
+    $('#authStatus').textContent = AUTH.authed ? 'Login aktif untuk peramban ini.' : 'Belum login.';
+    $('#pwForm').hidden = !AUTH.authed;
+    $('#pwCurWrap').hidden = false; $('#pwCur').hidden = false;
+    $('#logoutBtn').hidden = !AUTH.authed;
+  } else {
+    $('#authStatus').textContent = 'Aplikasi terbuka tanpa password. Isi password baru untuk mengaktifkan login.';
+    $('#pwForm').hidden = false;
+    $('#pwCurWrap').hidden = true; $('#pwCur').hidden = true;
+    $('#logoutBtn').hidden = true;
+  }
+}
+$('#themeSeg').addEventListener('click', e => { const b = e.target.closest('button'); if(b) setTheme(b.dataset.theme); });
+$('#mapClear').onclick = () => {
+  if(confirm('Hapus semua sandingan merchant↔outlet yang tersimpan?')){ writeQrisMap({}); renderPengaturan(); if(STATE) reanalyse(); toast('Sandingan dihapus'); }
+};
+$('#wipeLocal').onclick = () => {
+  if(!confirm('Hapus semua data lokal di peramban ini (draft & sandingan merchant)?')) return;
+  Object.values(LS).forEach(k => { if(k !== LS.theme) store(k, null); });
+  tampilanKosong(); renderPengaturan();
+  toast('Data lokal dihapus');
+};
+$('#pwSave').onclick = async () => {
+  $('#pwMsg').textContent = '';
+  const baru = $('#pwNew').value;
+  if(baru.length < 4){ $('#pwMsg').textContent = 'Minimal 4 karakter.'; return; }
+  $('#pwSave').disabled = true;
+  try{
+    await SRV.j(fetch('/api/password', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ current: $('#pwCur').value, baru }) }));
+    $('#pwCur').value = ''; $('#pwNew').value = '';
+    toast('Password disimpan — silakan login ulang');
+    AUTH = { authRequired:true, authed:false };
+    showLogin();
+  }catch(err){ $('#pwMsg').textContent = err.message; }
+  finally{ $('#pwSave').disabled = false; }
 };
 
 /* ---------- sinkron server (riwayat SQLite) ---------- */
@@ -1207,9 +1372,11 @@ function afterAnalyse(){
   $('#saveBtn').hidden = !ok;
   $('#resbar').hidden = true;
   $('#saveBtn').classList.remove('on');
-  if(!ok) return;
-  const ds = STATE.otoRows.map(r=>r.d).filter(d=>!isNaN(d)).sort((a,b)=>a-b);
-  $('#saveDate').value = localDate(ds.length ? ds[0] : new Date());
+  // Isi tanggal header dari data (kalau user belum pilih sendiri)
+  if(STATE && !$('#tglData').dataset.touched){
+    const ds = STATE.otoRows.map(r=>r.d).filter(d=>!isNaN(d)).sort((a,b)=>a-b);
+    $('#tglData').value = localDate(ds.length ? ds[0] : new Date());
+  }
 }
 { const _analyse = analyse; analyse = function(src, persist){ _analyse(src, persist); afterAnalyse(); }; }
 
@@ -1220,12 +1387,12 @@ $('#loginForm').addEventListener('submit', async e => {
   try{
     await SRV.login($('#loginPw').value);
     $('#loginModal').hidden = true; $('#loginPw').value = '';
-    AUTH.authed = true; $('#logoutBtn').hidden = false; $('#histBtn').hidden = false;
-    refreshHist(); afterAnalyse(); toast('Berhasil masuk');
+    AUTH.authed = true;
+    $('[data-view="riwayat"]').hidden = false;
+    refreshHist(); afterAnalyse(); renderPengaturan(); toast('Berhasil masuk');
   }catch(err){ $('#loginErr').textContent = err.message; }
 });
 $('#logoutBtn').onclick = async () => { await SRV.logout(); location.reload(); };
-$('#histBtn').onclick = () => { const b = $('#histBox'); b.hidden = false; b.open = !b.open; if(b.open) refreshHist(); };
 $('#histRefresh').onclick = () => refreshHist();
 
 async function refreshHist(){
@@ -1267,10 +1434,10 @@ async function loadSnapshot(id){
     const snap = await SRV.get(id), s = snap.sumber || {};
     $('#taOto').value = s.oto || ''; $('#taBri').value = s.bri || ''; $('#taBca').value = s.bca || '';
     $('#taMdr').value = s.mdr || ''; $('#taQris').value = s.qris || '';
-    $('#histBox').open = false;
-    analyse(inputs(), false);
+    $('#tglData').value = snap.tanggal; $('#tglData').dataset.touched = '1';
+    $('#saveNote').value = snap.catatan || '';
+    analyse(inputs(), false);   // → pindah ke menu Rekonsiliasi
     toast('Dimuat: ' + snap.tanggal);
-    window.scrollTo({ top:0, behavior:'smooth' });
   }catch(err){ toast(err.message); }
 }
 
@@ -1285,7 +1452,7 @@ $('#saveGo').onclick = async () => {
   if(!STATE) return;
   $('#saveMsg').textContent = ''; $('#saveGo').disabled = true;
   try{
-    const res = await SRV.save({ tanggal:$('#saveDate').value, catatan:$('#saveNote').value, sumber:inputs(), ringkasan:serverRingkasan() });
+    const res = await SRV.save({ tanggal:$('#tglData').value, catatan:$('#saveNote').value, sumber:inputs(), ringkasan:serverRingkasan() });
     toast('Tersimpan ke server (' + res.tanggal + ')'); $('#saveNote').value = '';
     $('#resbar').hidden = true; $('#saveBtn').classList.remove('on');
     refreshHist();
@@ -1303,10 +1470,10 @@ async function initServer(){
     AUTH = s;
   }catch{ return; }
   SERVER_OK = true;
-  $('#histBtn').hidden = false;
-  if(AUTH.authRequired && !AUTH.authed){ showLogin(); return; }
-  $('#logoutBtn').hidden = !AUTH.authRequired;
+  $('[data-view="riwayat"]').hidden = false;
+  if(AUTH.authRequired && !AUTH.authed){ showLogin(); }
   refreshHist(); afterAnalyse();
+  if(!$('#view-pengaturan').hidden) renderPengaturan();
   const muat = new URLSearchParams(location.search).get('muat');
   if(muat && /^\d+$/.test(muat)){
     history.replaceState(null, '', location.pathname);
@@ -1323,16 +1490,22 @@ syncStickyOffset();
 addEventListener('resize', syncStickyOffset);
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(syncStickyOffset);
 
+$('#tglData').value = localDate(new Date());
+$('#tglData').addEventListener('change', () => { $('#tglData').dataset.touched = '1'; });
+
 (function boot(){
   const savedOto = read(LS.oto);
   if(savedOto){
     $('#taOto').value = savedOto;
     $('#taBri').value = read(LS.bri) || ''; $('#taBca').value = read(LS.bca) || '';
     $('#taMdr').value = read(LS.mdr) || ''; $('#taQris').value = read(LS.qris) || '';
-    analyse(inputs(), false);
-  } else {
-    tampilanKosong();
+    analyse(inputs(), false);   // → menu Rekonsiliasi
   }
+  // Hormati #hash kalau ada (mis. bookmark ke #pengaturan), selain itu default sesuai ada/tidaknya data
+  const want = location.hash.slice(1);
+  showView(VIEWS.includes(want) ? want : (STATE ? 'rekon' : 'import'));
+  if(!STATE) $('#taOto').focus();
 })();
 initServer();
+syncStickyOffset();
 </script>
