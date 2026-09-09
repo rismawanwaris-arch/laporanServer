@@ -167,6 +167,9 @@ tbody tr:last-child td{border-bottom:none}
 .sub td{background:var(--paper); font-size:12.5px; color:var(--ink-soft)}
 .sub td:first-child{padding-left:30px}
 .exp-btn{font:inherit; font-size:12px; background:none; border:1px solid var(--line); border-radius:6px; padding:2px 7px; cursor:pointer; color:var(--ink-soft)}
+.mini{font:inherit; font-size:12px; background:var(--raise); border:1px solid var(--line); border-radius:6px; padding:3px 9px; cursor:pointer; color:var(--ink-soft)}
+.mini:hover{border-color:var(--accent); color:var(--accent-ink)}
+.mini.on{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600}
 .exp-btn:hover{border-color:var(--accent); color:var(--accent-ink)}
 
 .bank-head{font-family:"Spectral",serif; font-size:15px; font-weight:600; margin:24px 0 12px; padding-bottom:6px; border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:baseline; flex-wrap:wrap}
@@ -344,6 +347,13 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
       <button class="btn-ghost" id="mapClear" hidden style="margin-top:10px">Hapus semua sandingan</button>
     </div>
 
+    <div class="setgroup">
+      <h3>Keputusan audit manual</h3>
+      <p class="hint">Keputusan "Cocok" / "Bukan" yang Anda tekan di tabel <b>Audit manual</b> (tab Rekonsiliasi). Tersimpan di peramban ini.</p>
+      <p id="auditCount" class="hint" style="margin:0 0 8px"></p>
+      <button class="btn-ghost" id="auditClear">Hapus semua keputusan audit</button>
+    </div>
+
     <div class="setgroup" id="authGroup" hidden>
       <h3>Akun</h3>
       <p class="hint" id="authStatus"></p>
@@ -403,7 +413,7 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
 "use strict";
 const $ = s => document.querySelector(s);
 const el = (t,c,txt) => { const e=document.createElement(t); if(c)e.className=c; if(txt!=null)e.textContent=txt; return e; };
-const LS = { oto:'rt-otomax', bri:'rt-bri', bca:'rt-bca', mdr:'rt-mandiri', qris:'rt-qris', theme:'rt-theme', qrisMap:'rt-qris-map' };
+const LS = { oto:'rt-otomax', bri:'rt-bri', bca:'rt-bca', mdr:'rt-mandiri', qris:'rt-qris', theme:'rt-theme', qrisMap:'rt-qris-map', auditOk:'rt-audit' };
 const fmt = n => new Intl.NumberFormat('id-ID').format(Math.round(n));
 const rp  = n => (n<0?'−':'') + 'Rp' + fmt(Math.abs(n));
 const norm = s => (s||'').replace(/\s+/g,' ').trim().toUpperCase();
@@ -678,6 +688,13 @@ function reconcileBank(bankName, otoRows, src){
   });
   oto.filter(o => o.status === 'pending').forEach(o => o.status = 'tidak_ada');
 
+  // Konfirmasi manual dari tabel Audit ("Cocok" ditekan user): sandingkan bank↔Otomax walau referensi beda.
+  const aud = readAudit();
+  oto.filter(o => o.status === 'tidak_ada').forEach(o => {
+    const bm = credit.find(b => !b.matched && aud[auditKey(bankName, b, o)] === 'cocok');
+    if(bm){ bm.matched = true; o.status = 'cocok_manual'; o.bwaktu = bm.waktu; o.bAmt = bm.amount; }
+  });
+
   // Pass nominal: setoran/deposit ke rekening ini yang Otomax catat generik (tanpa referensi
   // yang cocok — mis. "Auto Deposit BCA"). Sandingkan ke kredit bank yang belum terpakai, per nominal unik.
   const depoRe = new RegExp('DEPOSIT\\s+' + bankName + '\\b', 'i');
@@ -736,6 +753,14 @@ function isBcaMerchant(text){
 const qStrip = s => norm(s).replace(/\b(PLC|KBB|CELL|CABANG|OUTLET|QR)\b/g, '').replace(/[^A-Z0-9]/g, '');
 function readQrisMap(){ try{ return JSON.parse(read(LS.qrisMap) || '{}') || {}; }catch{ return {}; } }
 function writeQrisMap(m){ store(LS.qrisMap, JSON.stringify(m)); }
+
+// Keputusan audit manual: { [key]: 'cocok' | 'bukan' }
+function readAudit(){ try{ return JSON.parse(read(LS.auditOk) || '{}') || {}; }catch{ return {}; } }
+function writeAudit(m){ store(LS.auditOk, JSON.stringify(m)); }
+function auditKey(bankName, b, o){
+  return bankName + '|' + String(b.normRef || b.desc || '').slice(0,48) + '|' + b.amount
+       + '|' + String(o.normRef || o.ref || '').slice(0,48) + '|' + o.jumlah;
+}
 
 function reconcileQris(otoRows, qrisRows){
   const oto = otoRows.filter(r => r.cat === 'Tarik Tunai — QRIS Bulk')
@@ -888,7 +913,7 @@ function reanalyse(){
 
 /* ---------- helpers for recon totals ---------- */
 function bankStats(r){
-  const cocok = r.oto.filter(o => o.status === 'cocok' || o.status === 'cocok_fuzzy' || o.status === 'cocok_deposit');
+  const cocok = r.oto.filter(o => o.status === 'cocok' || o.status === 'cocok_fuzzy' || o.status === 'cocok_deposit' || o.status === 'cocok_manual');
   const salah = r.oto.filter(o => o.status === 'salah_bank');
   const tidak = r.oto.filter(o => o.status === 'tidak_ada');
   return {
@@ -1237,29 +1262,45 @@ function auditRows(bankU, otoU){
 }
 function auditBlock(bankName, bankU, otoU){
   const rows = auditRows(bankU, otoU);
-  const kandidat = rows.filter(x => x.bank && x.oto).length;
+  const aud = readAudit();
+  const kandidat = rows.filter(x => x.bank && x.oto);
   const c = el('div','card');
   c.append(Object.assign(el('div','card-h'), { innerHTML:'<h3>Audit manual — belum tersanding ' + bankName
     + ' <span class="num" style="color:var(--ink-faint);font-weight:400">' + rows.length + '</span></h3>' }));
   const bd = el('div'); bd.style.padding = '10px 14px';
   bd.append(Object.assign(el('p','hint'), { style:'margin:0 0 10px',
-    textContent: kandidat
-      ? kandidat + ' baris keisi di dua sisi (nominal sama / dekat) — kemungkinan transaksi yang sama, sistem tak mengenali karena format referensi beda. Cek, lalu perbaiki referensi/label di Otomax.'
+    textContent: kandidat.length
+      ? kandidat.length + ' baris keisi di dua sisi (nominal sama / dekat) — kemungkinan transaksi yang sama, referensi di Otomax beda. Tekan Cocok / Bukan untuk memutuskan; keputusan disimpan.'
       : 'Tidak ada nominal yang sama di kedua sisi.' }));
   const sc = el('div','tbl-scroll'); const tb = el('table','xtable');
-  tb.innerHTML = '<thead><tr><th class="n">Nominal</th><th>Di mutasi ' + bankName + '</th><th>Di Otomax</th><th></th></tr></thead>';
+  tb.innerHTML = '<thead><tr><th class="n">Nominal</th><th>Di mutasi ' + bankName + '</th><th>Di Otomax</th><th>Keputusan</th></tr></thead>';
   const tbody = el('tbody');
   rows.forEach(x => {
     const tr = el('tr');
-    if(x.bank && x.oto) tr.style.background = 'var(--crit-soft)';
+    const both = x.bank && x.oto;
+    const key = both ? auditKey(bankName, x.bank, x.oto) : null;
+    const status = key ? aud[key] : null;
+    if(both && status !== 'bukan') tr.style.background = 'var(--crit-soft)';
+    if(status === 'bukan') tr.style.opacity = '.5';
     const jamB = x.bank && x.bank.waktu ? (String(x.bank.waktu).match(/\d{2}:\d{2}(:\d{2})?/) || [''])[0] : '';
-    const bankTxt = x.bank ? (jamB ? jamB + '  ' : '') + x.bank.desc.slice(0,60) : '—';
-    const otoTxt = x.oto ? x.oto.reseller.trim() + '  ·  ' + x.oto.ref.slice(0,52) : '—';
+    const mono = 'font-size:11.5px;font-family:\'IBM Plex Mono\',monospace';
     const nom = (x.match === 'dekat' && x.oto) ? rp(x.amt) + ' / ' + rp(x.oto.jumlah) : rp(x.amt);
-    tr.innerHTML = '<td class="n">' + nom + '</td>'
-      + '<td style="font-size:11.5px;font-family:\'IBM Plex Mono\',monospace">' + bankTxt + '</td>'
-      + '<td style="font-size:11.5px;font-family:\'IBM Plex Mono\',monospace">' + otoTxt + '</td>'
-      + '<td style="font-size:11px">' + (x.bank && x.oto ? (x.match === 'dekat' ? '<span class="neg">selisih?</span>' : '<span class="neg">cek — cocok?</span>') : '') + '</td>';
+    tr.append(
+      Object.assign(el('td','n'), { textContent:nom }),
+      Object.assign(el('td'), { style:mono, textContent: x.bank ? (jamB ? jamB + '  ' : '') + x.bank.desc.slice(0,60) : '—' }),
+      Object.assign(el('td'), { style:mono, textContent: x.oto ? x.oto.reseller.trim() + '  ·  ' + x.oto.ref.slice(0,52) : '—' }),
+    );
+    const act = el('td');
+    if(both){
+      const set = v => { const m = readAudit(); if(m[key] === v) delete m[key]; else m[key] = v; writeAudit(m); reanalyse(); };
+      const bC = el('button','mini' + (status === 'cocok' ? ' on' : ''), 'Cocok'); bC.onclick = () => set('cocok');
+      const bX = el('button','mini' + (status === 'bukan' ? ' on' : ''), 'Bukan'); bX.onclick = () => set('bukan');
+      bC.style.marginRight = '4px';
+      act.append(bC, bX);
+    } else {
+      act.innerHTML = '<span class="hint">satu sisi</span>';
+    }
+    tr.append(act);
     tbody.append(tr);
   });
   tb.append(tbody); sc.append(tb); c.append(bd); c.append(sc); return c;
@@ -1275,7 +1316,7 @@ function bankBlock(r){
   wrap.append(head);
 
   const g = k => r.oto.filter(o => o.status === k);
-  const cocok = [...g('cocok'), ...g('cocok_fuzzy'), ...g('cocok_deposit')];
+  const cocok = [...g('cocok'), ...g('cocok_fuzzy'), ...g('cocok_deposit'), ...g('cocok_manual')];
   const chips = el('div','chips');
   const chip = (cls,label,n) => { const c = el('span','chip ' + cls); c.innerHTML = label + ' <span class="num">' + n + '</span>'; return c; };
   chips.append(
@@ -1326,7 +1367,9 @@ function bankBlock(r){
   const tbody = el('tbody');
   cocok.forEach(o => {
     const tr = el('tr');
-    tr.innerHTML = '<td class="num">' + jam(o.tgl) + '</td><td>' + o.reseller + '</td><td class="n pos">' + rp(o.jumlah) + '</td><td class="num" style="font-size:11px">' + o.ref.slice(0,52) + (o.status === 'cocok_fuzzy' ? '  ≈' : o.status === 'cocok_deposit' ? '  (nominal)' : '') + '</td>';
+    const tag = o.status === 'cocok_fuzzy' ? '  ≈' : o.status === 'cocok_deposit' ? '  (nominal)'
+      : o.status === 'cocok_manual' ? ('  (audit manual' + (o.bAmt != null && o.bAmt !== o.jumlah ? ', selisih ' + rp(o.bAmt - o.jumlah) : '') + ')') : '';
+    tr.innerHTML = '<td class="num">' + jam(o.tgl) + '</td><td>' + o.reseller + '</td><td class="n pos">' + rp(o.jumlah) + '</td><td class="num" style="font-size:11px">' + o.ref.slice(0,52) + tag + '</td>';
     tbody.append(tr);
   });
   tb.append(tbody); scr.append(tb); c.append(scr);
@@ -1640,6 +1683,11 @@ function renderPengaturan(){
   });
   $('#mapClear').hidden = !keys.length;
 
+  const av = Object.values(readAudit());
+  const nCocok = av.filter(v => v === 'cocok').length, nBukan = av.filter(v => v === 'bukan').length;
+  $('#auditCount').textContent = av.length ? (nCocok + ' ditandai cocok · ' + nBukan + ' ditandai bukan') : 'Belum ada keputusan.';
+  $('#auditClear').hidden = !av.length;
+
   const g = $('#authGroup');
   if(!SERVER_OK){ g.hidden = true; return; }
   g.hidden = false;
@@ -1658,6 +1706,9 @@ function renderPengaturan(){
 $('#themeSeg').addEventListener('click', e => { const b = e.target.closest('button'); if(b) setTheme(b.dataset.theme); });
 $('#mapClear').onclick = () => {
   if(confirm('Hapus semua sandingan merchant↔outlet yang tersimpan?')){ writeQrisMap({}); renderPengaturan(); if(STATE) reanalyse(); toast('Sandingan dihapus'); }
+};
+$('#auditClear').onclick = () => {
+  if(confirm('Hapus semua keputusan audit manual?')){ writeAudit({}); renderPengaturan(); if(STATE) reanalyse(); toast('Keputusan audit dihapus'); }
 };
 $('#wipeLocal').onclick = () => {
   if(!confirm('Hapus semua data lokal di peramban ini (draft & sandingan merchant)?')) return;
