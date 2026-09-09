@@ -91,14 +91,15 @@ module.exports = {
     return n;
   },
 
-  /** Ubah tanggal, catatan &/atau ringkasan. @returns {boolean} */
-  ubah(id, { tanggal, catatan, ringkasan }) {
+  /** Ubah tanggal, catatan, ringkasan &/atau sumber. @returns {boolean} */
+  ubah(id, { tanggal, catatan, ringkasan, sumber }) {
     const cur = q.get.get(id | 0);
     if (!cur) return false;
     const t = /^\d{4}-\d{2}-\d{2}$/.test(tanggal || "") ? tanggal : cur.tanggal;
     const c = catatan == null ? cur.catatan : String(catatan).slice(0, 500);
     const r = ringkasan == null ? cur.ringkasan : JSON.stringify(ringkasan);
-    db.prepare("UPDATE snapshots SET tanggal = ?, catatan = ?, ringkasan = ? WHERE id = ?").run(t, c, r, id | 0);
+    const s = sumber == null ? cur.sumber : JSON.stringify(sumber);
+    db.prepare("UPDATE snapshots SET tanggal = ?, catatan = ?, ringkasan = ?, sumber = ? WHERE id = ?").run(t, c, r, s, id | 0);
     return true;
   },
 

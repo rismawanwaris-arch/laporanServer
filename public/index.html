@@ -219,6 +219,11 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
 .resbar-date{font-size:12px; color:var(--ink-soft); display:flex; gap:6px; align-items:center; font-weight:600}
 .resbar input[type=date],.resbar input[type=text]{font:inherit; font-size:13px; padding:6px 9px; border-radius:7px; border:1px solid var(--line); background:var(--paper); color:var(--ink)}
 .resbar input[type=text]{flex:1; min-width:140px; font-weight:400}
+.sumberbar{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:16px}
+.sumberbar .sb-label{font-size:12px; color:var(--ink-soft); font-weight:600}
+.sb-chip{font:inherit; font-size:12px; padding:4px 10px; border-radius:20px; cursor:pointer; border:1px dashed var(--line); background:var(--raise); color:var(--ink-soft)}
+.sb-chip.on{border-style:solid; border-color:var(--good-line); background:var(--good-soft); color:var(--good)}
+.sb-chip:hover{border-color:var(--accent); color:var(--accent-ink)}
 .hist-list{margin-top:12px; display:flex; flex-direction:column; gap:8px}
 .hist-row{display:flex; gap:8px 14px; align-items:baseline; flex-wrap:wrap; border:1px solid var(--line); border-radius:8px; padding:11px 14px; background:var(--raise)}
 .hist-row .hd{flex:none; font-weight:600; font-family:"Spectral",serif; font-size:15px; color:var(--ink); white-space:nowrap}
@@ -347,6 +352,7 @@ footer{color:var(--ink-faint); font-size:12px; text-align:center; padding:0 20px
         <span class="err" id="saveMsg"></span>
       </div>
       <div class="banner" id="fokusBanner" hidden></div>
+      <div class="sumberbar" id="sumberBar" hidden></div>
       <div class="tiles" id="tiles"></div>
       <div class="panel" id="p-perhatian"></div>
       <div class="panel" id="p-ringkasan" hidden></div>
@@ -1885,6 +1891,8 @@ document.querySelectorAll('.filepick').forEach(btn => {
 });
 $('#filePick').onchange = async e => {
   const f = e.target.files[0]; const target = $('#filePick').dataset.target;
+  const toRecord = $('#filePick').dataset.recordUpdate === '1';
+  $('#filePick').dataset.recordUpdate = '';
   e.target.value = '';
   if(!f || !target) return;
   try{
@@ -1899,8 +1907,40 @@ $('#filePick').onchange = async e => {
       $('#' + target).value = await f.text();
     }
     toast(f.name + ' dimuat');
+    if(toRecord) await simpanSumberRecord();
   }catch(err){ toast('Gagal baca file: ' + err.message); }
 };
+
+// Tambah / ganti 1 file sumber pada record yang sedang dibuka, lalu analisa ulang & simpan.
+async function simpanSumberRecord(){
+  if(!STATE || !STATE.recordId){ toast('Buka record dulu dari daftar Data tersimpan'); return; }
+  const id = STATE.recordId;
+  try{
+    await SRV.patch(id, { sumber: inputs() });
+    analyse(inputs(), false, { fokusTanggal: STATE.fokusTanggal, recordId: id });
+    if(STATE) await SRV.patch(id, { ringkasan: serverRingkasan() });
+    refreshHist();
+    toast('Sumber ditambahkan — record dianalisa ulang');
+  }catch(err){ if(/login/i.test(err.message)) showLogin(); else toast('Gagal simpan: ' + err.message); }
+}
+
+/* ---------- bar sumber data (tab Rekonsiliasi, hanya saat buka record) ---------- */
+function renderSumberBar(){
+  const bar = $('#sumberBar'); if(!bar) return;
+  const show = STATE && STATE.recordId && bisaSimpan();
+  bar.hidden = !show;
+  if(!show){ bar.innerHTML = ''; return; }
+  const src = inputs();
+  bar.innerHTML = '';
+  bar.append(Object.assign(el('span','sb-label'), { textContent:'Sumber record ini:' }));
+  [['oto','taOto','Otomax'],['bri','taBri','BRI'],['bca','taBca','BCA'],['mdr','taMdr','Mandiri'],['qris','taQris','QRIS']].forEach(([k,ta,label]) => {
+    const has = !!(src[k] || '').trim();
+    const chip = el('button', 'sb-chip' + (has ? ' on' : ''), has ? label + '  ✓' : label + '  + file');
+    chip.title = (has ? 'Ganti file ' : 'Tambah file ') + label + ' ke record ini, lalu analisa ulang';
+    chip.onclick = () => { const fp = $('#filePick'); fp.dataset.target = ta; fp.dataset.recordUpdate = '1'; fp.click(); };
+    bar.append(chip);
+  });
+}
 
 /* ---------- pengaturan ---------- */
 function renderPengaturan(){
@@ -2087,6 +2127,7 @@ function afterAnalyse(){
   if(STATE && !$('#tglData').dataset.touched){
     $('#tglData').value = tanggalDataOtomatis(STATE.otoRows);
   }
+  renderSumberBar();
 }
 { const _analyse = analyse; analyse = function(src, persist, opts){ _analyse(src, persist, opts); afterAnalyse(); }; }
 
