@@ -1216,6 +1216,55 @@ function sect(title, items, render){
   c.append(bd); return c;
 }
 
+// Sandingkan sisi yang belum ketemu (kredit bank vs baris Otomax) per nominal — untuk audit manual:
+// baris yang keisi di dua sisi = kemungkinan transaksi yang sama tapi format referensinya beda.
+function auditRows(bankU, otoU){
+  const oRem = otoU.map(o => ({ o, used:false }));
+  const rows = [];
+  bankU.forEach(b => {
+    let hit = oRem.find(x => !x.used && x.o.jumlah === b.amount);
+    let match = hit ? 'sama' : null;
+    if(!hit){
+      const near = oRem.filter(x => !x.used && Math.abs(x.o.jumlah - b.amount) <= Math.max(1000, Math.abs(b.amount) * 0.006));
+      if(near.length === 1){ hit = near[0]; match = 'dekat'; }
+    }
+    if(hit) hit.used = true;
+    rows.push({ amt:b.amount, bank:b, oto: hit ? hit.o : null, match });
+  });
+  oRem.filter(x => !x.used).forEach(x => rows.push({ amt:x.o.jumlah, bank:null, oto:x.o, match:null }));
+  rows.sort((a,b) => ((b.bank && b.oto) ? 1 : 0) - ((a.bank && a.oto) ? 1 : 0) || Math.abs(b.amt) - Math.abs(a.amt));
+  return rows;
+}
+function auditBlock(bankName, bankU, otoU){
+  const rows = auditRows(bankU, otoU);
+  const kandidat = rows.filter(x => x.bank && x.oto).length;
+  const c = el('div','card');
+  c.append(Object.assign(el('div','card-h'), { innerHTML:'<h3>Audit manual — belum tersanding ' + bankName
+    + ' <span class="num" style="color:var(--ink-faint);font-weight:400">' + rows.length + '</span></h3>' }));
+  const bd = el('div'); bd.style.padding = '10px 14px';
+  bd.append(Object.assign(el('p','hint'), { style:'margin:0 0 10px',
+    textContent: kandidat
+      ? kandidat + ' baris keisi di dua sisi (nominal sama / dekat) — kemungkinan transaksi yang sama, sistem tak mengenali karena format referensi beda. Cek, lalu perbaiki referensi/label di Otomax.'
+      : 'Tidak ada nominal yang sama di kedua sisi.' }));
+  const sc = el('div','tbl-scroll'); const tb = el('table','xtable');
+  tb.innerHTML = '<thead><tr><th class="n">Nominal</th><th>Di mutasi ' + bankName + '</th><th>Di Otomax</th><th></th></tr></thead>';
+  const tbody = el('tbody');
+  rows.forEach(x => {
+    const tr = el('tr');
+    if(x.bank && x.oto) tr.style.background = 'var(--crit-soft)';
+    const jamB = x.bank && x.bank.waktu ? (String(x.bank.waktu).match(/\d{2}:\d{2}(:\d{2})?/) || [''])[0] : '';
+    const bankTxt = x.bank ? (jamB ? jamB + '  ' : '') + x.bank.desc.slice(0,60) : '—';
+    const otoTxt = x.oto ? x.oto.reseller.trim() + '  ·  ' + x.oto.ref.slice(0,52) : '—';
+    const nom = (x.match === 'dekat' && x.oto) ? rp(x.amt) + ' / ' + rp(x.oto.jumlah) : rp(x.amt);
+    tr.innerHTML = '<td class="n">' + nom + '</td>'
+      + '<td style="font-size:11.5px;font-family:\'IBM Plex Mono\',monospace">' + bankTxt + '</td>'
+      + '<td style="font-size:11.5px;font-family:\'IBM Plex Mono\',monospace">' + otoTxt + '</td>'
+      + '<td style="font-size:11px">' + (x.bank && x.oto ? (x.match === 'dekat' ? '<span class="neg">selisih?</span>' : '<span class="neg">cek — cocok?</span>') : '') + '</td>';
+    tbody.append(tr);
+  });
+  tb.append(tbody); sc.append(tb); c.append(bd); c.append(sc); return c;
+}
+
 function bankBlock(r){
   const wrap = el('div');
   const s = bankStats(r);
@@ -1248,6 +1297,9 @@ function bankBlock(r){
   // 2) arah balik: Otomax mencatat, tapi tidak ada di mutasi bank
   wrap.append(sect('Dicatat di Otomax, tapi tidak ada di mutasi ' + r.bank, g('tidak_ada'),
     o => recItem(tindakLanjut(o).cls, jam(o.tgl), o.reseller + ' &nbsp; <span class="num">' + rp(o.jumlah) + '</span>', o.ket, tindakLanjut(o))));
+
+  // 3) audit manual: dua sisi yang belum ketemu, disandingkan per nominal
+  if(r.unmatched.length && g('tidak_ada').length) wrap.append(auditBlock(r.bank, r.unmatched, g('tidak_ada')));
 
   if(g('salah_bank').length) wrap.append(sect('Salah label bank di Otomax', g('salah_bank'),
     o => recItem('warn', jam(o.tgl), o.reseller + ' &nbsp; <span class="num">' + rp(o.jumlah) + '</span>', o.ket,
